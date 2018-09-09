@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="http://www.oasis-open.org/docbook/xml/5.0/rng/docbookxi.rng" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<book xmlns="http://docbook.org/ns/docbook" xmlns:xi="http://www.w3.org/2001/XInclude"
+    xmlns:xlink="http://www.w3.org/1999/xlink" version="5.0" xml:id="udr" xml:lang="ru">
+    <info>
+        <title>Написание UDR Firebird на Pascal</title>
+        <edition>2 сентября 2018 — 0.1 Alpha</edition>
+        
+        <authorgroup>
+            <author>
+                <personname><firstname>Денис</firstname>
+                    <surname>Симонов</surname></personname>
+            </author>
+        </authorgroup>
+        <editor>
+            <personname><firstname>Денис</firstname>
+                <surname>Симонов</surname></personname>
+        </editor>
+    </info>
+    
+    <xi:include href="intro.xml" xpointer="element(/1)"/>  
+    <xi:include href="fbapi.xml" xpointer="element(/1)"/>    
+    <xi:include href="psql.xml" xpointer="element(/1)"/> 
+    <xi:include href="framework.xml" xpointer="element(/1)"/> 
+    
+    <index>
+        <info>
+            <title>Алфавитный указатель</title>
+        </info>
+    </index>
+</book>
+

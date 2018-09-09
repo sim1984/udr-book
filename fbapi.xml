@@ -1,0 +1,44 @@
+<!DOCTYPE chapter>
+<chapter xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="fbapi" xml:lang="ru">
+    <info>
+        <title>Firebird API</title>
+    </info>
+    <para>Для написания внешних процедур, функций или триггеров на компилируемых языках
+        программирования нам потребуются знания о новом объектно ориентированном API Firebird. В
+        данном руководство не включает полного описания Firebird API. Вы можете ознакомится с ним в
+        каталоге документации распространяемой вместе с Firebird
+            (<filename>doc/Using_OO_API.html</filename>). Для русскоязычных пользователей существует
+        перевод данного документа доступный по адресу <link
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            xlink:href="https://github.com/sim1984/fbapi30/releases/download/0.5/fbapi.pdf"
+        />.</para>
+    <para>Подключаемые файлы для различных языков программирования, содержащие интрефейсы API, не
+        распространяются в составе Firebird. Вместо этого распространяется файл описания интерфейсов
+            <filename>include/firebird/FirebirdInterface.idl</filename>. С помощью инструмента CLOOP
+        на основе этого IDL файла можно сгенерировать файл интерфейсов для конкретного языка
+        программирования (<filename>IdlFbInterfaces.h</filename> или
+            <filename>Firebird.pas</filename>).</para>
+    <para>CLOOP — Cross Language Object Oriented Programming. Этот инструмент не входит в поставку
+        Firebird. Его можно найти в исходных кодах <link xmlns:xlink="http://www.w3.org/1999/xlink"
+            xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/extern/cloop"/>.
+        После того как инструмент будет собран, можно сгенерировать API для вашего языка
+        программирования. Для Object pascal это делается следующей коммандой:
+        <programlisting>
+cloop FirebirdInterface.idl pascal Firebird.pas Firebird --uses SysUtils \
+  --interfaceFile Pascal.interface.pas \
+  --implementationFile Pascal.implementation.pas \
+  --exceptionClass FbException --prefix I \
+  --functionsFile fb_get_master_interface.pas            
+        </programlisting>
+        Файлы <filename>Pascal.interface.pas</filename>,
+            <filename>Pascal.implementation.pas</filename> и
+            <filename>fb_get_master_interface.pas</filename> можно найти по адресу <link
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/src/misc/pascal"
+        />. </para>
+
+    <note>
+        <para>В данном случае для интерфейсов Firebird API будет добавлен префикс I, так как это
+            принято в Object Pascal.</para>
+    </note>
+</chapter>

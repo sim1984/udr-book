@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="10"/>
+    <BuildModes Active="Default"/>
+    <Units Count="5">
+      <Unit0>
+        <Filename Value="MyUdr.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos X="36" Y="11"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="UdrInit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="21"/>
+        <CursorPos X="16" Y="4"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="SumArgsFunc.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="BlobCountFunc.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="44"/>
+        <CursorPos X="37" Y="55"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="C:\lazarus\fpc\3.0.4\source\rtl\objpas\classes\classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="931"/>
+        <CursorPos X="17" Y="1016"/>
+        <UsageCount Value="10"/>
+      </Unit4>
+    </Units>
+    <JumpHistory Count="5" HistoryIndex="4">
+      <Position1>
+        <Filename Value="MyUdr.lpr"/>
+        <Caret Line="9" Column="55"/>
+      </Position1>
+      <Position2>
+        <Filename Value="BlobCountFunc.pas"/>
+        <Caret Line="29" Column="19" TopLine="16"/>
+      </Position2>
+      <Position3>
+        <Filename Value="BlobCountFunc.pas"/>
+        <Caret Line="52" Column="33" TopLine="43"/>
+      </Position3>
+      <Position4>
+        <Filename Value="MyUdr.lpr"/>
+        <Caret Line="3"/>
+      </Position4>
+      <Position5>
+        <Filename Value="UdrInit.pas"/>
+        <Caret Line="29" Column="85" TopLine="16"/>
+      </Position5>
+    </JumpHistory>
+  </ProjectSession>
+</CONFIG>

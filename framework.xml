@@ -1,0 +1,295 @@
+<!DOCTYPE chapter>
+<chapter xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="udr-framework" xml:lang="ru">
+  <info>
+    <title>Структура UDR</title>
+  </info>
+
+  <para>Мы будем описывать структуру UDR на языке Pascal. Для объяснения минимальной структуры для
+    построения UDR будем спользовать стандартные примеры из <filename>examples/udr/</filename>
+    переведённыъ на Pascal.</para>
+
+  <para>Создайте новый проект новой динамической библиотеки,который назовём MyUdr. В результате у
+    вас должен получиться файл <filename>MyUdr.dpr</filename> (если вы создавали проект в Delphi)
+    или файл <filename>MyUdr.lpr</filename> (если вы создали проект в Lazarus). Теперь изменим
+    главный файл проекта так чтобы он выглядил следующим образом: <programlisting language="delphi">
+<![CDATA[            
+library MyUdr;
+
+{$IFDEF FPC}
+  {$MODE objfpc}{$H+}
+{$ENDIF}
+
+uses
+{$IFDEF unix}
+    cthreads,
+    // the c memory manager is on some systems much faster for multi-threading
+    cmem,
+{$ENDIF}
+  UdrInit in 'UdrInit.pas',
+  SumArgsFunc in 'SumArgsFunc.pas';
+
+exports firebird_udr_plugin;
+
+end.     
+]]>
+    </programlisting>
+  </para>
+  <para>В данном случе необходимо экспортировать всего одну функцию
+      <function>firebird_udr_plugin</function>, которая является точкой входа для плагина внешних
+    модулей UDR. Реализая этой функции будет находится в модуле <package>UdrInit</package>.</para>
+  <note>
+    <title>Особенности Free Pascal</title>
+    <para>Если вы разрабатываете вашу UDR в Free Pascal, то вам потребуются дполнительные директивы.
+      Директива <code>{$mode objfpc}</code> требуется для включения режима Object Pascal. Вместо неё
+      вы можете использовать директиву <code>{$mode delphi}</code> для обеспечения совместимости с
+      Delphi. </para>
+    <para>Директива <code>{$H+}</code> включает поддержку длинный строк. Это необходимо если вы
+      будете пользоваться типы string, ansistring, а не только нуль-терминированные строки PChar,
+      PAnsiChar, PWideChar.</para>
+    <para>Кроме того, нам потребуетя подключить отдельные модули для поддержки многопоточности в
+      Linux и других Unix-подобных операционых системах.</para>
+  </note>
+
+  <para>Теперь добавим модуль UdrInit, он должен выглядить следующим образом: <programlisting language="delphi">
+<![CDATA[
+unit UdrInit;
+
+{$IFDEF FPC}
+  {$MODE objfpc}{$H+}
+{$ENDIF}
+
+interface
+
+uses
+  Firebird,
+  SumArgsFunc;
+
+// точка входа для External Engine модуля UDR
+function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
+  AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
+
+implementation
+
+var
+  myUnloadFlag: Boolean;
+  theirUnloadFlag: BooleanPtr;
+
+function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
+  AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
+begin
+  // регистрируем наши функции
+  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFactory.Create());
+  // регистрируем наши процедуры
+  //AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
+  // регистриуем наши триггеры
+  //AUdrPlugin.registerTrigger(AStatus, 'replicate', TReplicateFactory.create());
+
+  theirUnloadFlag := AUnloadFlagLocal;
+  Result := @myUnloadFlag;
+end;
+
+initialization
+
+myUnloadFlag := false;
+
+finalization
+
+if ((theirUnloadFlag <> nil) and not myUnloadFlag) then
+  theirUnloadFlag^ := true;
+
+end.
+]]>            
+             </programlisting>
+  </para>
+
+  <para>В функции <function>firebird_udr_plugin</function> необходимо зарегистрировать фабрики наших
+    внешних поцедур, функций и триггеров. Для каждой функции, процедуры или триггера необходимо
+    написать свою фабрику. Это делается с помощью методов интерфейса
+      <interfacename>IUdrPlugin</interfacename>:<itemizedlist spacing="compact">
+      <listitem>
+        <para><methodname>registerFunction</methodname> - регистрирует внешнюю функцию;</para>
+      </listitem>
+      <listitem>
+        <para><methodname>registerProcedure</methodname> - регистрирует внешнюю процедуру;</para>
+      </listitem>
+      <listitem>
+        <para><methodname>registerTrigger</methodname> - регистрирует внешний триггер.</para>
+      </listitem>
+    </itemizedlist></para>
+
+  <para>Первым аргументом этих функций является указатель на статус вектор, далее следует внутреннее
+    имя функции (проедуры или триггера). Внутреннее имя будет использоваться при создании
+    процедуры/ыункции/триггера на SQL. Третьим аргументом передаётся экземпляр фабрики для создания
+    фукции (процедуры или триггера).</para>
+
+  <para>Теперь необхоимо написать фабрику и саму функцию. Они будут расположены в модуле
+    SumArgsFunc. Примеры для написания процедур и триггеров будут представлены позже.</para>
+
+  <para>
+    <programlisting language="delphi">
+<![CDATA[
+unit SumArgsFunc;
+
+{$IFDEF FPC}
+{$MODE objfpc}{$H+}
+{$ENDIF}
+
+interface
+
+uses
+  Firebird;
+
+// *********************************************************
+//    create function sum_args (
+//      n1 integer,
+//      n2 integer,
+//      n3 integer
+//    ) returns integer
+//    external name 'myudr!sum_args'
+//    engine udr;
+// *********************************************************
+
+type
+  // структура на которое будет отображено входное сообщение
+  TSumArgsInMsg = record
+    n1: Integer;
+    n1Null: WordBool;
+    n2: Integer;
+    n2Null: WordBool;
+    n3: Integer;
+    n3Null: WordBool;
+  end;
+  PSumArgsInMsg = ^TSumArgsInMsg;
+
+  // структура на которое будет отображено выходное сообщение
+  TSumArgsOutMsg = record
+    result: Integer;
+    resultNull: WordBool;
+  end;
+  PSumArgsOutMsg = ^TSumArgsOutMsg;
+
+  // Фабрика для создания экземпляра внешней функции TSumArgsFunction
+  TSumArgsFactory = class(IUdrFunctionFactoryImpl)
+    // Вызывается при уничтожении фабрики
+    procedure dispose(); override;
+
+    { Выполняется каждый раз при загрузке внешней функции в кеш метаданных
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AMetadata Метаданные внешней функции)
+      @param(AInBuilder Построитель сообщения для входных метаданных)
+      @param(AOutBuilder Построитель сообщения для выходных метаданных)
+    }
+    procedure setup(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
+      AOutBuilder: IMetadataBuilder); override;
+
+    { Создание нового экземпляра внешней функции TSumArgsFunction
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AMetadata Метаданные внешней функции)
+      @returns(Экземпляр внешней функции)
+    }
+    function newItem(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata): IExternalFunction; override;
+  end;
+
+  // Внешняя функция TSumArgsFunction.
+  TSumArgsFunction = class(IExternalFunctionImpl)
+    // Вызывается при уничтожении экземпляра функции
+    procedure dispose(); override;
+
+
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
+    { Выполнение внешней функции
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AInMsg Указатель на входное сообщение)
+      @param(AOutMsg Указатель на выходное сообщение)
+    }
+    procedure execute(AStatus: IStatus; AContext: IExternalContext;
+      AInMsg: Pointer; AOutMsg: Pointer); override;
+  end;
+
+implementation
+
+{ TSumArgsFactory }
+
+procedure TSumArgsFactory.dispose;
+begin
+  Destroy;
+end;
+
+function TSumArgsFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
+  AMetadata: IRoutineMetadata): IExternalFunction;
+begin
+  Result := TSumArgsFunction.Create();
+end;
+
+procedure TSumArgsFactory.setup(AStatus: IStatus; AContext: IExternalContext;
+  AMetadata: IRoutineMetadata; AInBuilder, AOutBuilder: IMetadataBuilder);
+begin
+
+end;
+
+{ TSumArgsFunction }
+
+procedure TSumArgsFunction.dispose;
+begin
+  Destroy;
+end;
+
+procedure TSumArgsFunction.execute(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer);
+var
+  xInput: PSumArgsInMsg;
+  xOutput: PSumArgsOutMsg;
+begin
+  // преобразовываем указатели на вход и выход к типизированным
+  xInput := PSumArgsInMsg(AInMsg);
+  xOutput := PSumArgsOutMsg(AOutMsg);
+  // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
+  xOutput^.resultNull := True;
+  // если один из аргументов NULL значит и резултат NULL
+  // в противном случае считаем сумму аргументов
+  with xInput^ do
+  begin
+    if not (n1Null or n2Null or n3Null) then
+    begin
+      xOutput^.result := n1 + n2 + n3;
+      // раз есть результат, то сбрасываем NULL флаг
+      xOutput^.resultNull := False;
+    end;
+  end;  
+end;
+
+procedure TSumArgsFunction.getCharSet(AStatus: IStatus;
+  AContext: IExternalContext; AName: PAnsiChar; ANameSize: Cardinal);
+begin
+end;
+
+end.
+]]>            
+             </programlisting>
+  </para>
+
+  <para>Фабрика внешней функции должна наследовать класс
+      <interfacename>IUdrFunctionFactoryImpl</interfacename>. Для каждой внешней функци нужна своя
+    фабрика. Впрочем, если фабрики не имеют специфики для создания некоторой функции, то можно
+    написать обощённую фабрику с помощью дженериков. Позже мы приведём пример как это
+    сделать.</para>
+
+  <para>Метод <methodname>dispose</methodname> вызывается при уничтожени фабрики, в нём мы должны
+    освободить ранее выделенные ресурсы. В данном случае просто вызываем деструктор.</para>
+
+  <para>Метод <methodname>setup</methodname> выполняется каждый раз при загрузке внешней функции в
+    кеш метаданных. В нём можно делать различные действия которые необходимы перед созданием
+    экземпляра функции, например динамическое создание метаданных для входных и выходных сообщений.
+    Более подробно поговрим о нём позже.</para>
+
+</chapter>

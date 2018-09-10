@@ -95,11 +95,9 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="UdrInit.pas"/>
-        <DCCReference Include="SumArgsFunc.pas"/>
         <DCCReference Include="UdrFactories.pas"/>
         <DCCReference Include="UdrMessages.pas"/>
         <DCCReference Include="Udr.pas"/>
-        <DCCReference Include="BlobCountFunc.pas"/>
         <DCCReference Include="SplitProc.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>

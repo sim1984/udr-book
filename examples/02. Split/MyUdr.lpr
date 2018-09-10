@@ -9,11 +9,9 @@ uses
   cthreads,
   {$ENDIF }
   UdrInit in 'UdrInit.pas',
-  SumArgsFunc in 'SumArgsFunc.pas',
   UdrFactories in 'UdrFactories.pas',
   UdrMessages in 'UdrMessages.pas',
-  Udr in 'Udr.pas',
-  BlobCountFunc in 'BlobCountFunc.pas';
+  Udr in 'Udr.pas';
 
 exports firebird_udr_plugin;
 

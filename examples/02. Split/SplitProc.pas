@@ -7,7 +7,7 @@ unit SplitProc;
 interface
 
 uses
-  Firebird, Udr, UdrMessages, Classes, SysUtils;
+  Firebird, UdrMessages, Classes, SysUtils;
 
 type
   // *********************************************************
@@ -19,11 +19,17 @@ type
   // engine udr;
   // *********************************************************
 
-  TSplitProcedure = class(TUdrProcedure)
+  TSplitProcedure = class(IExternalProcedureImpl)
   private
     function readBlob(AStatus: IStatus; AContext: IExternalContext;
       ABlobId: ISC_QUADPtr): string;
   public
+    // Вызывается при уничтожении экземпляра процедуры
+    procedure dispose(); override;
+
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
     function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
       AOutMsg: Pointer): IExternalResultSet; override;
   end;
@@ -87,6 +93,17 @@ end;
 
 { TSplitProcedure }
 
+procedure TSplitProcedure.dispose;
+begin
+  Destroy;
+end;
+
+procedure TSplitProcedure.getCharSet(AStatus: IStatus; AContext: IExternalContext;
+  AName: PAnsiChar; ANameSize: Cardinal);
+begin
+
+end;
+
 function TSplitProcedure.open(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer): IExternalResultSet;
 type
@@ -117,11 +134,13 @@ begin
   xText := readBlob(AStatus, AContext, @xInput.txt.Value);
   {$IFDEF FPC}
   // c FPC надо серьёзно подумать не пашет
-  xDelimiter := string(utf8string(xInput.delimiter.Value));
+  xDelimiter := TEncoding.UTF8.GetString(@xInput.delimiter.Value, 0, 4);
   {$ELSE}
   xDelimiter := Utf8ToString(xInput.delimiter.Value);
   {$ENDIF}
-  // автоматически не правильно определяется
+  // автоматически не правильно определяется потому что строки
+  // не завершены нулём
+  // ставим кол-во байт/4
   SetLength(xDelimiter, 1);
 
   Result := TSplitResultSet.Create;
@@ -141,10 +160,14 @@ var
   blob: IBlob;
   buffer: array [0 .. 32767] of AnsiChar;
   l: Integer;
+  {$IFDEF FPC}
+  xStream: TBytesStream;
+  {$ELSE}
   xStream: TStringStream;
+  {$ENDIF}
 begin
   {$IFDEF FPC}
-  xStream := TStringStream.Create('');
+  xStream := TBytesStream.Create(nil);
   {$ELSE}
   xStream := TStringStream.Create('', 65001);
   {$ENDIF}
@@ -164,7 +187,11 @@ begin
       end;
     end;
     xStream.Position := 0;
+    {$IFDEF FPC}
+    Result := TEncoding.UTF8.GetString(xStream.Bytes, 0, xStream.Size);
+    {$ELSE}
     Result := xStream.DataString;
+    {$ENDIF}
     blob.close(AStatus);
   finally
     if Assigned(att) then

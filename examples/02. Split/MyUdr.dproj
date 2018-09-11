@@ -94,10 +94,10 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\Common\Firebird.pas"/>
+        <DCCReference Include="..\Common\UdrMessages.pas"/>
+        <DCCReference Include="..\Common\UdrFactories.pas"/>
         <DCCReference Include="UdrInit.pas"/>
-        <DCCReference Include="UdrFactories.pas"/>
-        <DCCReference Include="UdrMessages.pas"/>
-        <DCCReference Include="Udr.pas"/>
         <DCCReference Include="SplitProc.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>

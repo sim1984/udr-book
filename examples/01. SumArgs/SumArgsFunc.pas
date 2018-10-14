@@ -1,4 +1,4 @@
-﻿unit SumArgsFunc;
+unit SumArgsFunc;
 
 {$IFDEF FPC}
 {$MODE objfpc}{$H+}

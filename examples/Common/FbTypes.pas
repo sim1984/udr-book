@@ -10,7 +10,7 @@ uses
   Firebird;
 
 type
-  // типы Firebird
+  // С‚РёРїС‹ Firebird
   TFBType = (
     SQL_VARYING = 448, // VARCHAR
     SQL_TEXT = 452, // CHAR
@@ -36,7 +36,7 @@ type
     time: ISC_TIME;
   end;
 
-  // указатели на специальные типы
+  // СѓРєР°Р·Р°С‚РµР»Рё РЅР° СЃРїРµС†РёР°Р»СЊРЅС‹Рµ С‚РёРїС‹
   PISC_DATE = ^ISC_DATE;
   PISC_TIME = ^ISC_TIME;
   PISC_TIMESTAMP = ^ISC_TIMESTAMP;

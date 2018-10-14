@@ -1,4 +1,4 @@
-﻿unit UdrInit;
+unit UdrInit;
 
 {$IFDEF FPC}
   {$MODE DELPHI}{$H+}
@@ -41,4 +41,3 @@ if ((theirUnloadFlag <> nil) and not myUnloadFlag) then
   theirUnloadFlag^ := true;
 
 end.
-

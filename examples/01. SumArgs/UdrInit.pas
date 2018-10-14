@@ -1,4 +1,4 @@
-﻿unit UdrInit;
+unit UdrInit;
 
 {$IFDEF FPC}
   {$MODE objfpc}{$H+}

@@ -47,7 +47,7 @@ type
     function readBlob(AStatus: IStatus; AContext: IExternalContext;
       ABlobId: ISC_QUADPtr): string;
   public
-    // Вызывается при уничтожении экземпляра процедуры
+    // Р’С‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё СЌРєР·РµРјРїР»СЏСЂР° РїСЂРѕС†РµРґСѓСЂС‹
     procedure dispose(); override;
 
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
@@ -87,9 +87,9 @@ begin
   if Counter <= High(OutputArray) then
   begin
     Output.Null := False;
-    // исключение будут перехвачены в любом случае с кодом isc_random
-    // здесь же мы будем выбрасывать стандартную для Firebird
-    // ошибку isc_convert_error
+    // РёСЃРєР»СЋС‡РµРЅРёРµ Р±СѓРґСѓС‚ РїРµСЂРµС…РІР°С‡РµРЅС‹ РІ Р»СЋР±РѕРј СЃР»СѓС‡Р°Рµ СЃ РєРѕРґРѕРј isc_random
+    // Р·РґРµСЃСЊ Р¶Рµ РјС‹ Р±СѓРґРµРј РІС‹Р±СЂР°СЃС‹РІР°С‚СЊ СЃС‚Р°РЅРґР°СЂС‚РЅСѓСЋ РґР»СЏ Firebird
+    // РѕС€РёР±РєСѓ isc_convert_error
     try
       Output.Id := OutputArray[Counter].ToInteger();
     except
@@ -141,9 +141,9 @@ begin
 
   xText := readBlob(AStatus, AContext, @xInput.txt);
   xDelimiter := TFBCharSet.CS_UTF8.GetString(@xInput.delimiter, 0, 4);
-  // автоматически не правильно определяется потому что строки
-  // не завершены нулём
-  // ставим кол-во байт/4
+  // Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РЅРµ РїСЂР°РІРёР»СЊРЅРѕ РѕРїСЂРµРґРµР»СЏРµС‚СЃСЏ РїРѕС‚РѕРјСѓ С‡С‚Рѕ СЃС‚СЂРѕРєРё
+  // РЅРµ Р·Р°РІРµСЂС€РµРЅС‹ РЅСѓР»С‘Рј
+  // СЃС‚Р°РІРёРј РєРѕР»-РІРѕ Р±Р°Р№С‚/4
   SetLength(xDelimiter, 1);
 
   Result := TSplitResultSet.Create;

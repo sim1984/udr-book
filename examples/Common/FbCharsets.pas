@@ -1,4 +1,4 @@
-﻿unit FbCharsets;
+unit FbCharsets;
 
 {$IFDEF MSWINDOWS}
 {$DEFINE WINDOWS}

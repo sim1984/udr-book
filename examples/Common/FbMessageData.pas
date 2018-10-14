@@ -33,12 +33,12 @@ type
   public
     constructor Create(AContext: IExternalContext;
       AMetaData: TFbMessageMetadata; ABuffer: PByte);
-    // возвращает указатель на данные
+    // РІРѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РґР°РЅРЅС‹Рµ
     function GetData(AIndex: Cardinal): PByte;
     // null
     function isNull(AIndex: Cardinal): Boolean;
     procedure setNull(AIndex: Cardinal; ANullFlag: Boolean);
-    // простые типы
+    // РїСЂРѕСЃС‚С‹Рµ С‚РёРїС‹
     function getBoolean(AIndex: Cardinal): Boolean;
     procedure setBoolean(AIndex: Cardinal; AValue: Boolean);
     function getSmallint(AIndex: Cardinal): Smallint;
@@ -67,12 +67,12 @@ type
     procedure setDateTime(AIndex: Cardinal; AValue: TDateTime);
     function getString(AIndex: Cardinal): string;
     procedure setString(AIndex: Cardinal; const AValue: string);
-    // свойства
+    // СЃРІРѕР№СЃС‚РІР°
     property Metadata: TFbMessageMetadata read FMetadata;
     property FbUtil: IUtil read GetFbUtil;
     // null
     property Null[AIndex: Cardinal]: Boolean read isNull write setNull;
-    // типы
+    // С‚РёРїС‹
     property AsBoolean[AIndex: Cardinal]: Boolean read getBoolean
       write setBoolean;
     property AsSmallint[AIndex: Cardinal]: Smallint read getSmallint

@@ -18,13 +18,13 @@ uses Firebird,
   System.Generics.Collections;
 
 const
-  MAX_IDENTIFIER_LENGTH = 31; // для 4.0 = 63 * 4 -1
+  MAX_IDENTIFIER_LENGTH = 31; // РґР»В¤ 4.0 = 63 * 4 -1
 
 type
 
 
 
-  // Элемент метаданных
+  // РЃР»РµРјРµРЅС‚ РјРµС‚Р°РґР°РЅРЅС‹С…
   TFbMessageMetadataItem = class
   private
     FIndex: Cardinal;
@@ -73,7 +73,7 @@ type
     property SQLTypeAsString: string read GetSQLTypeAsString;
   end;
 
-  // Метаданные
+  // С›РµС‚Р°РґР°РЅРЅС‹Рµ
   TFbMessageMetadata = class(TObjectList<TFbMessageMetadataItem>)
   private
     FMessageLength: Cardinal;
@@ -138,7 +138,7 @@ begin
     SQL_VARYING, SQL_TEXT:
       Result := FDataLength div CharSetWidth;
     SQL_BLOB, SQL_QUAD:
-      Result := High(Integer); // 2 Гб
+      Result := High(Integer); // 2 в€љР±
   else
     Result := 0;
   end;
@@ -154,19 +154,19 @@ begin
 
     SQL_SHORT:
     begin
-      // учесть масштаб
+      // СѓС‡РµСЃС‚СЊ РјР°СЃС€С‚Р°Р±
       Result := 'SMALLINT';
     end;
 
     SQL_LONG:
     begin
-      // учесть масштаб
+      // СѓС‡РµСЃС‚СЊ РјР°СЃС€С‚Р°Р±
       Result := 'INTEGER';
     end;
 
     SQL_INT64:
     begin
-      // в 3-м диалекте учитвается масштаб
+      // РІ 3-Рј РґРёР°Р»РµРєС‚Рµ СѓС‡РёС‚РІР°РµС‚СЃВ¤ РјР°СЃС€С‚Р°Р±
       if Scale = 0 then
         Result := 'BIGINT'
       else
@@ -180,7 +180,7 @@ begin
 
     SQL_DOUBLE, SQL_D_FLOAT:
     begin
-      // в 1-м диалекте учитвается масштаб
+      // РІ 1-Рј РґРёР°Р»РµРєС‚Рµ СѓС‡РёС‚РІР°РµС‚СЃВ¤ РјР°СЃС€С‚Р°Р±
       if Scale = 0 then
         Result := 'DOUBLE PRECISION'
       else

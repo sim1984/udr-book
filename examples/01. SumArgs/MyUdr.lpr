@@ -12,7 +12,8 @@ uses
 {$ENDIF}
   Firebird in '../Common/Firebird.pas',
   UdrInit in 'UdrInit.pas',
-  SumArgsFunc in 'SumArgsFunc.pas';
+  SumArgsFunc in 'SumArgsFunc.pas',
+  GenRowsProc in 'GenRowsProc.pas';
 
 exports firebird_udr_plugin;
 

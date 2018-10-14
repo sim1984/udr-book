@@ -95,9 +95,13 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="..\Common\Firebird.pas"/>
+        <DCCReference Include="..\Common\FbTypes.pas"/>
+        <DCCReference Include="..\Common\FbCharsets.pas"/>
+        <DCCReference Include="..\Common\FbBlob.pas"/>
+        <DCCReference Include="..\Common\FbMessageMetadata.pas"/>
+        <DCCReference Include="..\Common\UdrFactories.pas"/>
         <DCCReference Include="UdrInit.pas"/>
-        <DCCReference Include="SumArgsFunc.pas"/>
-        <DCCReference Include="GenRowsProc.pas"/>
+        <DCCReference Include="SplitProc.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

@@ -1,26 +1,49 @@
 unit SplitProc;
 
 {$IFDEF FPC}
-  {$MODE DELPHI}{$H+}
+{$MODE DELPHI}{$H+}
 {$ENDIF}
 
 interface
 
 uses
-  Firebird, UdrMessages, Classes, SysUtils;
+  Firebird, Classes, SysUtils, FbCharsets;
 
 type
-  // *********************************************************
-  // create procedure split (
-  // txt blob sub_type text character set utf8,
-  // delimiter char(1) character set utf8 = ','
-  // ) returns (id integer)
-  // external name 'myudr!split'
-  // engine udr;
-  // *********************************************************
+
+  { **********************************************************
+
+    create procedure split (
+        txt blob sub_type text character set utf8,
+        delimiter char(1) character set utf8 = ','
+    ) returns (
+        id integer
+    )
+    external name 'myudr!split'
+    engine udr;
+
+    ********************************************************* }
+
+  TInput = record
+    txt: ISC_QUAD;
+    txtNull: WordBool;
+    delimiter: array [0 .. 3] of AnsiChar;
+    delimiterNull: WordBool;
+  end;
+
+  TInputPtr = ^TInput;
+
+  TOutput = record
+    Id: Integer;
+    Null: WordBool;
+  end;
+
+  TOutputPtr = ^TOutput;
 
   TSplitProcedure = class(IExternalProcedureImpl)
   private
+    procedure SaveBlobToStream(AStatus: IStatus; AContext: IExternalContext;
+      ABlobId: ISC_QUADPtr; AStream: TStream);
     function readBlob(AStatus: IStatus; AContext: IExternalContext;
       ABlobId: ISC_QUADPtr): string;
   public
@@ -35,20 +58,19 @@ type
   end;
 
   TSplitResultSet = class(IExternalResultSetImpl)
-    {$IFDEF FPC}
+{$IFDEF FPC}
     OutputArray: TStringArray;
-    {$ELSE}
+{$ELSE}
     OutputArray: TArray<string>;
-    {$ENDIF}
+{$ENDIF}
     Counter: Integer;
-    Output: ^FB_INTEGER;
+    Output: TOutputPtr;
 
     procedure dispose(); override;
     function fetch(AStatus: IStatus): Boolean; override;
   end;
 
 implementation
-
 
 { TSplitResultSet }
 
@@ -64,12 +86,12 @@ var
 begin
   if Counter <= High(OutputArray) then
   begin
-    Output^.Null := False;
+    Output.Null := False;
     // исключение будут перехвачены в любом случае с кодом isc_random
     // здесь же мы будем выбрасывать стандартную для Firebird
     // ошибку isc_convert_error
     try
-      Output^.Value := OutputArray[Counter].ToInteger();
+      Output.Id := OutputArray[Counter].ToInteger();
     except
       on e: EConvertError do
       begin
@@ -90,7 +112,6 @@ begin
     Result := False;
 end;
 
-
 { TSplitProcedure }
 
 procedure TSplitProcedure.dispose;
@@ -98,46 +119,28 @@ begin
   Destroy;
 end;
 
-procedure TSplitProcedure.getCharSet(AStatus: IStatus; AContext: IExternalContext;
-  AName: PAnsiChar; ANameSize: Cardinal);
+procedure TSplitProcedure.getCharSet(AStatus: IStatus;
+  AContext: IExternalContext; AName: PAnsiChar; ANameSize: Cardinal);
 begin
 
 end;
 
 function TSplitProcedure.open(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer): IExternalResultSet;
-type
-  {$IFDEF FPC}
-  CHAR_1 = array[0 .. 3] of AnsiChar;
-  TInput = record
-    txt: FB_BLOB;
-    delimiter: FB_CHAR <CHAR_1>;
-  end;
-  {$ELSE}
-  TInput = record
-    txt: FB_BLOB;
-    delimiter: FB_CHAR <array[0 .. 3] of AnsiChar>;
-  end;
-  {$ENDIF}
 var
-  xInput: ^TInput;
+  xInput: TInputPtr;
   xText: string;
   xDelimiter: string;
 begin
   xInput := AInMsg;
-  if xInput.txt.Null or xInput.delimiter.Null then
+  if xInput.txtNull or xInput.delimiterNull then
   begin
     Result := nil;
     Exit;
   end;
 
-  xText := readBlob(AStatus, AContext, @xInput.txt.Value);
-  {$IFDEF FPC}
-  // c FPC надо серьёзно подумать не пашет
-  xDelimiter := TEncoding.UTF8.GetString(@xInput.delimiter.Value, 0, 4);
-  {$ELSE}
-  xDelimiter := Utf8ToString(xInput.delimiter.Value);
-  {$ENDIF}
+  xText := readBlob(AStatus, AContext, @xInput.txt);
+  xDelimiter := TFBCharSet.CS_UTF8.GetString(@xInput.delimiter, 0, 4);
   // автоматически не правильно определяется потому что строки
   // не завершены нулём
   // ставим кол-во байт/4
@@ -155,22 +158,38 @@ end;
 function TSplitProcedure.readBlob(AStatus: IStatus; AContext: IExternalContext;
   ABlobId: ISC_QUADPtr): string;
 var
+{$IFDEF FPC}
+  xStream: TBytesStream;
+{$ELSE}
+  xStream: TStringStream;
+{$ENDIF}
+begin
+{$IFDEF FPC}
+  xStream := TBytesStream.Create(nil);
+{$ELSE}
+  xStream := TStringStream.Create('', 65001);
+{$ENDIF}
+  try
+    SaveBlobToStream(AStatus, AContext, ABlobId, xStream);
+{$IFDEF FPC}
+    Result := TEncoding.UTF8.GetString(xStream.Bytes, 0, xStream.Size);
+{$ELSE}
+    Result := xStream.DataString;
+{$ENDIF}
+  finally
+    xStream.Free;
+  end;
+end;
+
+procedure TSplitProcedure.SaveBlobToStream(AStatus: IStatus;
+  AContext: IExternalContext; ABlobId: ISC_QUADPtr; AStream: TStream);
+var
   att: IAttachment;
   trx: ITransaction;
   blob: IBlob;
   buffer: array [0 .. 32767] of AnsiChar;
   l: Integer;
-  {$IFDEF FPC}
-  xStream: TBytesStream;
-  {$ELSE}
-  xStream: TStringStream;
-  {$ENDIF}
 begin
-  {$IFDEF FPC}
-  xStream := TBytesStream.Create(nil);
-  {$ELSE}
-  xStream := TStringStream.Create('', 65001);
-  {$ENDIF}
   try
     att := AContext.getAttachment(AStatus);
     trx := AContext.getTransaction(AStatus);
@@ -179,19 +198,14 @@ begin
     begin
       case blob.getSegment(AStatus, SizeOf(buffer), @buffer, @l) of
         IStatus.RESULT_OK:
-          xStream.WriteBuffer(buffer, l);
+          AStream.WriteBuffer(buffer, l);
         IStatus.RESULT_SEGMENT:
-          xStream.WriteBuffer(buffer, l);
+          AStream.WriteBuffer(buffer, l);
       else
         break;
       end;
     end;
-    xStream.Position := 0;
-    {$IFDEF FPC}
-    Result := TEncoding.UTF8.GetString(xStream.Bytes, 0, xStream.Size);
-    {$ELSE}
-    Result := xStream.DataString;
-    {$ENDIF}
+    AStream.Position := 0;
     blob.close(AStatus);
   finally
     if Assigned(att) then
@@ -200,9 +214,7 @@ begin
       trx.release;
     if Assigned(blob) then
       blob.release;
-    xStream.Free;
   end;
-
 end;
 
 end.

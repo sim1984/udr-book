@@ -27,7 +27,7 @@
         <Mode0 Name="default"/>
       </Modes>
     </RunParams>
-    <Units Count="4">
+    <Units Count="7">
       <Unit0>
         <Filename Value="MyUdr.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -37,13 +37,26 @@
         <IsPartOfProject Value="True"/>
       </Unit1>
       <Unit2>
-        <Filename Value="SumArgsFunc.pas"/>
+        <Filename Value="..\Common\Firebird.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit2>
       <Unit3>
-        <Filename Value="..\Common\Firebird.pas"/>
+        <Filename Value="SplitProc.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="..\Common\UdrFactories.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="..\Common\FbTypes.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="..\Common\fbcharsets.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="FbCharsets"/>
+      </Unit6>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -54,8 +67,14 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="..\Common"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
+    <Parsing>
+      <SyntaxOptions>
+        <SyntaxMode Value="Delphi"/>
+      </SyntaxOptions>
+    </Parsing>
     <CodeGeneration>
       <RelocatableUnit Value="True"/>
     </CodeGeneration>

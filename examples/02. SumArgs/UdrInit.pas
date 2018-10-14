@@ -9,7 +9,7 @@ interface
 uses
   Firebird,
   SumArgsFunc,
-  GenRowsProc;
+  UdrFactories;
 
 // точка входа для External Engine модуля UDR
 function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
@@ -25,9 +25,9 @@ function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
 begin
   // регистрируем наши функции
-  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFactory.Create());
+  AUdrPlugin.registerFunction(AStatus, 'sum_args2', TFunctionFactory<TSumArgsFunction>.Create());
   // регистрируем наши процедуры
-  AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
+  //AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
   // регистриуем наши триггеры
   //AUdrPlugin.registerTrigger(AStatus, 'replicate', TReplicateFactory.create());
 

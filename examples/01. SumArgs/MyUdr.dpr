@@ -5,14 +5,13 @@ library MyUdr;
 {$ENDIF}
 
 uses
-{$IFDEF unix}
-    cthreads,
-    // the c memory manager is on some systems much faster for multi-threading
-    cmem,
-{$ENDIF}
-  Firebird in '../Common/Firebird.pas',
+  {$IFDEF unix}
+  cthreads,
+  {$ENDIF }
+  Firebird in '..\Common\Firebird.pas',
   UdrInit in 'UdrInit.pas',
-  SumArgsFunc in 'SumArgsFunc.pas';
+  SumArgsFunc in 'SumArgsFunc.pas',
+  GenRowsProc in 'GenRowsProc.pas';
 
 exports firebird_udr_plugin;
 

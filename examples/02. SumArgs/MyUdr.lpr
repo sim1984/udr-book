@@ -1,18 +1,19 @@
 library MyUdr;
 
 {$IFDEF FPC}
-  {$MODE DELPHI}{$H+}
+  {$MODE objfpc}{$H+}
 {$ENDIF}
 
 uses
-  {$IFDEF unix}
-  cthreads,
-  {$ENDIF }
+{$IFDEF unix}
+    cthreads,
+    // the c memory manager is on some systems much faster for multi-threading
+    cmem,
+{$ENDIF}
   Firebird in '../Common/Firebird.pas',
   UdrMessages in '../Common/UdrMessages.pas',
-  UdrFactories in '../Common/UdrFactories.pas',
   UdrInit in 'UdrInit.pas',
-  SplitProc in 'SplitProc.pas';
+  SumArgsFunc in 'SumArgsFunc.pas';
 
 exports firebird_udr_plugin;
 

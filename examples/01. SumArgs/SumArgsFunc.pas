@@ -9,15 +9,17 @@ interface
 uses
   Firebird;
 
-// *********************************************************
-//    create function sum_args (
-//      n1 integer,
-//      n2 integer,
-//      n3 integer
-//    ) returns integer
-//    external name 'myudr!sum_args'
-//    engine udr;
-// *********************************************************
+  { **********************************************************
+
+    create function sum_args (
+      n1 integer,
+      n2 integer,
+      n3 integer
+    ) returns integer
+    external name 'myudr!sum_args'
+    engine udr;
+
+    ********************************************************* }
 
 type
   // структура на которое будет отображено входное сообщение

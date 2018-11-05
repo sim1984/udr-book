@@ -1,4 +1,4 @@
-unit SplitProc;
+﻿unit SplitProc;
 
 {$IFDEF FPC}
 {$MODE DELPHI}{$H+}
@@ -140,7 +140,7 @@ begin
   end;
 
   xText := readBlob(AStatus, AContext, @xInput.txt);
-  xDelimiter := TFBCharSet.CS_UTF8.GetString(@xInput.delimiter, 0, 4);
+  xDelimiter := TFBCharSet.CS_UTF8.GetString(TBytes(@xInput.delimiter), 0, 4);
   // автоматически не правильно определяется потому что строки
   // не завершены нулём
   // ставим кол-во байт/4

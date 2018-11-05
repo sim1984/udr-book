@@ -1,4 +1,4 @@
-unit SumArgsFunc;
+﻿unit SumArgsFunc;
 
 {$IFDEF FPC}
 {$MODE objfpc}{$H+}
@@ -41,7 +41,7 @@ type
   PSumArgsOutMsg = ^TSumArgsOutMsg;
 
   // Фабрика для создания экземпляра внешней функции TSumArgsFunction
-  TSumArgsFactory = class(IUdrFunctionFactoryImpl)
+  TSumArgsFunctionFactory = class(IUdrFunctionFactoryImpl)
     // Вызывается при уничтожении фабрики
     procedure dispose(); override;
 
@@ -99,20 +99,20 @@ type
 
 implementation
 
-{ TSumArgsFactory }
+{ TSumArgsFunctionFactory }
 
-procedure TSumArgsFactory.dispose;
+procedure TSumArgsFunctionFactory.dispose;
 begin
   Destroy;
 end;
 
-function TSumArgsFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
+function TSumArgsFunctionFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
   AMetadata: IRoutineMetadata): IExternalFunction;
 begin
   Result := TSumArgsFunction.Create();
 end;
 
-procedure TSumArgsFactory.setup(AStatus: IStatus; AContext: IExternalContext;
+procedure TSumArgsFunctionFactory.setup(AStatus: IStatus; AContext: IExternalContext;
   AMetadata: IRoutineMetadata; AInBuilder, AOutBuilder: IMetadataBuilder);
 begin
 

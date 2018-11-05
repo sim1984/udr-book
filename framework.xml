@@ -84,7 +84,7 @@ function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
 begin
   // регистрируем наши функции
-  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFactory.Create());
+  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFunctionFactory.Create());
   // регистрируем наши процедуры
   //AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
   // регистриуем наши триггеры
@@ -181,7 +181,7 @@ type
   PSumArgsOutMsg = ^TSumArgsOutMsg;
 
   // Фабрика для создания экземпляра внешней функции TSumArgsFunction
-  TSumArgsFactory = class(IUdrFunctionFactoryImpl)
+  TSumArgsFunctionFactory = class(IUdrFunctionFactoryImpl)
     // Вызывается при уничтожении фабрики
     procedure dispose(); override;
 
@@ -239,20 +239,20 @@ type
 
 implementation
 
-{ TSumArgsFactory }
+{ TSumArgsFunctionFactory }
 
-procedure TSumArgsFactory.dispose;
+procedure TSumArgsFunctionFactory.dispose;
 begin
   Destroy;
 end;
 
-function TSumArgsFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
+function TSumArgsFunctionFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
   AMetadata: IRoutineMetadata): IExternalFunction;
 begin
   Result := TSumArgsFunction.Create();
 end;
 
-procedure TSumArgsFactory.setup(AStatus: IStatus; AContext: IExternalContext;
+procedure TSumArgsFunctionFactory.setup(AStatus: IStatus; AContext: IExternalContext;
   AMetadata: IRoutineMetadata; AInBuilder, AOutBuilder: IMetadataBuilder);
 begin
 
@@ -358,12 +358,511 @@ end.
     <para>Входные и выходные сообщения имеют фиксированную ширину, которая зависит от типов данных
       декларируемых для входных и выходных переменных соответсвенно. Это позволяет использовать
       типизированные указатели на структуры фиксированный ширины, члены который должны
-      соответсвовать типам данных. Из прмера видно что для каждой переменной в структуре указывается
-      член соответсвующего типа, после чего идёт член, который является признаком специального
-      значения NULL (далее Null флаг). Помимио работы с буферами входных и выходных сообщений через
-      струтуры, существует ещё один способ с арифметики на указателях и смещениях, значения которых
-      можно получить из интерфейса <interfacename>IMessageMetadata</interfacename>. Подробнее о
-      работе с собщениями мы поговрим далее, а сейчас просто пояним что делалось в методе
-        <methodname>execute</methodname>.</para>
+      соответсвовать типам данных. Из примера видно что для каждой переменной в структуре
+      указывается член соответсвующего типа, после чего идёт член, который является признаком
+      специального значения NULL (далее Null флаг). Помимо работы с буферами входных и выходных
+      сообщений через струтуры, существует ещё один способ с использованием арифметики на указателях
+      и смещениях, значения которых можно получить из интерфейса
+        <interfacename>IMessageMetadata</interfacename>. Подробнее о работе с сообщениями мы
+      поговрим далее, а сейчас просто пояним что делалось в методе
+      <methodname>execute</methodname>.</para>
+    <para>Первым делом мы преобразовываем нетепизированные указатели к типизированным. Для выходного
+      значение устанавливаем Null флаг в значение True (это необходимо чтобы функция возаращал NULL,
+      если один из входных аргументов равен NULL). Затем проверяем Null флаги у всех входных
+      аргументов, если ни один из входных аргументов не равен NULL, то выходное значение будет равно
+      сумме значений аргументов. Важно не забыть сбросить Null флаг выходного аргумента в значение
+      False.</para>
+  </section>
+
+  <section>
+    <title>Регистрация процедур</title>
+
+    <para>Пришло время добавить в наш UDR модуль хранимую процедуру. Как известно хранимые процедуры
+      бывают двух видов: выполняемые хранимые процедуры и хранимые процедуры для выборки данных.
+      Сначала добавим выполняемую хранимую процедуру, т.е. такую хранимую процедуру которая может
+      быть вызвана с помощью оператора EXECUTE PROCEDURE и может вернуть не более одной
+      записи.</para>
+
+    <para>Вернитесь в модуль UdrInit и измените функцию <function>firebird_udr_plugin</function> так
+      чтобы она выглядела следующим образом.</para>
+
+    <para>
+      <programlisting language="delphi">
+        <![CDATA[
+function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
+  AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
+begin
+  // регистрируем наши функции
+  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFunctionFactory.Create());
+  // регистрируем наши процедуры
+  AUdrPlugin.registerProcedure(AStatus, 'sum_args_proc', TSumArgsProcedureFactory.create());
+  //AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
+  // регистриуем наши триггеры
+  //AUdrPlugin.registerTrigger(AStatus, 'replicate', TReplicateFactory.create());
+
+  theirUnloadFlag := AUnloadFlagLocal;
+  Result := @myUnloadFlag;
+end;        
+        ]]>
+      </programlisting>
+    </para>
+  </section>
+  <section>
+    <title>Фабрика процедур</title>
+
+    <para>Фабрика внешней процедуры должна реализовать интерфейс
+        <interfacename>IUdrProcedureFactory</interfacename>. Для упрощения просто наследуем класс
+        <interfacename>IUdrProcedureFactoryImpl</interfacename>. Для каждой внешней процедуры нужна
+      своя фабрика. Впрочем, если фабрики не имеют специфики для создания некоторой процедуры, то
+      можно написать обощённую фабрику с помощью дженериков. Позже мы приведём пример как это
+      сделать.</para>
+
+    <para>Метод <methodname>dispose</methodname> вызывается при уничтожени фабрики, в нём мы должны
+      освободить ранее выделенные ресурсы. В данном случае просто вызываем деструктор.</para>
+
+    <para>Метод <methodname>setup</methodname> выполняется каждый раз при загрузке внешней процедуры
+      в кеш метаданных. В нём можно делать различные действия которые необходимы перед созданием
+      экземпляра процедуры, например динамическое создание метаданных для входных и выходных
+      сообщений. Более подробно поговорим о нём позже.</para>
+
+    <para>Метод <methodname>newItem</methodname> вызывается для создания экземпляра внешней
+      процедуры. В этот метод передаётся указатель на статус вектор, контекст внешней процедуры и
+      метаданные внешней процедуры. С помощью IRoutineMetadata вы можете получить формат входного и
+      выходного сообщения, тело внешней функции и другие метаданные. В этом методе вы можете
+      создавать различные экземпляры внешней функции в зависимости от её объявления в PSQL.
+      Метаданные можно передать в созданный экземпляр внешней процедуры если это необходимо. В нашем
+      случае мы просто создаём экземпляр внешней процедуры
+      <classname>TSumArgsProcedure</classname>.</para>
+
+    <para>Фабрику процедуры а также саму процедуру расположим в модуле SumArgsProc.</para>
+    <para>
+      <programlisting language="delphi">
+        <![CDATA[
+unit SumArgsProc;
+
+{$IFDEF FPC}
+{$MODE objfpc}{$H+}
+{$ENDIF}
+
+interface
+
+uses
+  Firebird;
+
+  { **********************************************************
+
+    create procedure sp_sum_args (
+      n1 integer,
+      n2 integer,
+      n3 integer
+    ) returns (result integer)
+    external name 'myudr!sum_args_proc'
+    engine udr;
+
+    ********************************************************* }
+type
+  // структура на которое будет отображено входное сообщение
+  TSumArgsInMsg = record
+    n1: Integer;
+    n1Null: WordBool;
+    n2: Integer;
+    n2Null: WordBool;
+    n3: Integer;
+    n3Null: WordBool;
+  end;
+  PSumArgsInMsg = ^TSumArgsInMsg;
+
+  // структура на которое будет отображено выходное сообщение
+  TSumArgsOutMsg = record
+    result: Integer;
+    resultNull: WordBool;
+  end;
+  PSumArgsOutMsg = ^TSumArgsOutMsg;
+
+  // Фабрика для создания экземпляра внешней процедуры TSumArgsProcedure
+  TSumArgsProcedureFactory = class(IUdrProcedureFactoryImpl)
+    // Вызывается при уничтожении фабрики
+    procedure dispose(); override;
+
+    { Выполняется каждый раз при загрузке внешней процедуры в кеш метаданных
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней процедуры)
+      @param(AMetadata Метаданные внешней процедуры)
+      @param(AInBuilder Построитель сообщения для входных метаданных)
+      @param(AOutBuilder Построитель сообщения для выходных метаданных)
+    }
+    procedure setup(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
+      AOutBuilder: IMetadataBuilder); override;
+
+    { Создание нового экземпляра внешней процедуры TSumArgsProcedure
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней процедуры)
+      @param(AMetadata Метаданные внешней процедуры)
+      @returns(Экземпляр внешней процедуры)
+    }
+    function newItem(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata): IExternalProcedure; override;
+  end;
+
+  TSumArgsProcedure = class(IExternalProcedureImpl)
+  public
+    // Вызывается при уничтожении экземпляра процедуры
+    procedure dispose(); override;
+
+    { Этот метод вызывается непосредственно перед open и сообщает
+      ядру наш запрошенный набор символов для обмена данными внутри
+      этого метода. Во время этого вызова контекст использует набор символов,
+      полученный из ExternalEngine::getCharSet.
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AName Имя набора символов)
+      @param(AName Длина имени набора символов)
+    }
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
+    { Выполнение внешней процедуры
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AInMsg Указатель на входное сообщение)
+      @param(AOutMsg Указатель на выходное сообщение)
+      @returns(Набор данных для селективной процедуры или nil для процедур выполнения)
+    }
+    function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
+      AOutMsg: Pointer): IExternalResultSet; override;
+  end;
+
+implementation
+
+{ TSumArgsProcedureFactory }
+
+procedure TSumArgsProcedureFactory.dispose;
+begin
+  Destroy;
+end;
+
+function TSumArgsProcedureFactory.newItem(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalProcedure;
+begin
+  Result := TSumArgsProcedure.create;
+end;
+
+procedure TSumArgsProcedureFactory.setup(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata; AInBuilder,
+  AOutBuilder: IMetadataBuilder);
+begin
+
+end;
+
+{ TSumArgsProcedure }
+
+procedure TSumArgsProcedure.dispose;
+begin
+  Destroy;
+end;
+
+procedure TSumArgsProcedure.getCharSet(AStatus: IStatus;
+  AContext: IExternalContext; AName: PAnsiChar; ANameSize: Cardinal);
+begin
+
+end;
+
+function TSumArgsProcedure.open(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer): IExternalResultSet;
+var
+  xInput: PSumArgsInMsg;
+  xOutput: PSumArgsOutMsg;
+begin
+  Result := nil;
+  // преобразовываем указатели на вход и выход к типизированным
+  xInput := PSumArgsInMsg(AInMsg);
+  xOutput := PSumArgsOutMsg(AOutMsg);
+  // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
+  xOutput^.resultNull := True;
+  // если один из аргументов NULL значит и резултат NULL
+  // в противном случае считаем сумму аргументов
+  with xInput^ do
+  begin
+    if not (n1Null or n2Null or n3Null) then
+    begin
+      xOutput^.result := n1 + n2 + n3;
+      // раз есть результат, то сбрасываем NULL флаг
+      xOutput^.resultNull := False;
+    end;
+  end;
+end;
+
+end.      
+        ]]>
+      </programlisting>
+    </para>
+  </section>
+  <section>
+    <title>Экземпляр процедуры</title>
+    <para>Внешняя процедура должна реализовать интерфейс
+        <interfacename>IExternalProcedure</interfacename>. Для упрощения просто наследуем класс
+        <classname>IExternalProcedureImpl</classname>. </para>
+    <para>Метод <methodname>dispose</methodname> вызывается при уничтожени экземляра процедуры, в
+      нём мы должны освободить ранее выделенные ресурсы. В данном случае просто вызываем
+      деструктор.</para>
+    <para>Метод <methodname>getCharSet</methodname> используется для того чтобы сообщить внешней
+      процедуре набор символов испольуемый при подключении к текущей базе данных. В большинстве
+      случаев в этом нет необходимости, так как набор символов для входных и выходных переменных
+      описан в метаданных при создании процедуры.</para>
+
+    <para>Метод <methodname>open</methodname> обрабатывает непосредственно сам вызов процедуры. В
+      этот метод передаётся указатель на статус вектор, указатель на контекст внешней функции,
+      указатели на входное и выходное сообщение. Если у вас выполняемая процедура, то метод должен
+      вернуть значение nil, в противном случае должен вернуться экземпляр набора выходных данных для
+      процедуры. В данном случае нам не нужно создавать экземпляр набора данных. Просто переносим
+      логику из метода <methodname>TSumArgsFunction.execute</methodname>.</para>
+  </section>
+
+  <section>
+    <title>Хранимая процедура выбора</title>
+
+    <para>Теперь добавим в наш UDR модуль простую процедуру выбора. Для этого дизменим функцию
+      регистраци <function>firebird_udr_plugin</function>. </para>
+
+    <para>
+      <programlisting language="delphi">
+        <![CDATA[
+function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
+  AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
+begin
+  // регистрируем наши функции
+  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFunctionFactory.Create());
+  // регистрируем наши процедуры
+  AUdrPlugin.registerProcedure(AStatus, 'sum_args_proc', TSumArgsProcedureFactory.create());
+  AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
+  // регистриуем наши триггеры
+  //AUdrPlugin.registerTrigger(AStatus, 'replicate', TReplicateFactory.create());
+
+  theirUnloadFlag := AUnloadFlagLocal;
+  Result := @myUnloadFlag;
+end;        
+        ]]>
+      </programlisting>
+    </para>
+
+    <para>Фабрика процедур полностью идентична как для случая с выполняемой хранимой процедурой.
+      Методы экзмепляра процедуры тоже идентичны, за исключением метода
+        <methodname>open</methodname>, который разберём чуть подробнее.</para>
+
+    <para>
+      <programlisting language="delphi">
+        <![CDATA[
+unit GenRowsProc;
+
+{$IFDEF FPC}
+{$MODE DELPHI}{$H+}
+{$ENDIF}
+
+interface
+
+uses
+  Firebird, SysUtils;
+
+type
+  { **********************************************************
+
+    create procedure gen_rows (
+      start  integer,
+      finish integer
+    ) returns (n integer)
+    external name 'myudr!gen_rows'
+    engine udr;
+
+    ********************************************************* }
+
+  TInput = record
+    start: Integer;
+    startNull: WordBool;
+    finish: Integer;
+    finishNull: WordBool;
+  end;
+  PInput = ^TInput;
+
+  TOutput = record
+    n: Integer;
+    nNull: WordBool;
+  end;
+  POutput = ^TOutput;
+
+  // Фабрика для создания экземпляра внешней процедуры TGenRowsProcedure
+  TGenRowsFactory = class(IUdrProcedureFactoryImpl)
+    // Вызывается при уничтожении фабрики
+    procedure dispose(); override;
+
+    { Выполняется каждый раз при загрузке внешней функции в кеш метаданных
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AMetadata Метаданные внешней функции)
+      @param(AInBuilder Построитель сообщения для входных метаданных)
+      @param(AOutBuilder Построитель сообщения для выходных метаданных)
+    }
+    procedure setup(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
+      AOutBuilder: IMetadataBuilder); override;
+
+    { Создание нового экземпляра внешней процедуры TGenRowsProcedure
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AMetadata Метаданные внешней функции)
+      @returns(Экземпляр внешней функции)
+    }
+    function newItem(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata): IExternalProcedure; override;
+  end;
+
+  // Внешняя процедура TGenRowsProcedure.
+  TGenRowsProcedure = class(IExternalProcedureImpl)
+  public
+    // Вызывается при уничтожении экземпляра процедуры
+    procedure dispose(); override;
+
+    { Этот метод вызывается непосредственно перед open и сообщает
+      ядру наш запрошенный набор символов для обмена данными внутри
+      этого метода. Во время этого вызова контекст использует набор символов,
+      полученный из ExternalEngine::getCharSet.
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AName Имя набора символов)
+      @param(AName Длина имени набора символов)
+    }
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
+    { Выполнение внешней процедуры
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AInMsg Указатель на входное сообщение)
+      @param(AOutMsg Указатель на выходное сообщение)
+      @returns(Набор данных для селективной процедуры или nil для процедур выполнения)
+    }
+    function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
+      AOutMsg: Pointer): IExternalResultSet; override;
+  end;
+
+  // Выходной набор данных для процедуры TGenRowsProcedure
+  TGenRowsResultSet = class(IExternalResultSetImpl)
+    Input: PInput;
+    Output: POutput;
+
+    // Вызывается при уничтожении экземпляра набора данных
+    procedure dispose(); override;
+
+    { Извлечение очередной записи из набора данных.
+      В некотором роде аналог SUSPEND. В этом методе должна
+      подготовливаться очередная запись из набора данных.
+
+      @param(AStatus Статус вектор)
+      @returns(True если в наборе данных есть запись для извлечения,
+               False если записи закончились)
+    }
+    function fetch(AStatus: IStatus): Boolean; override;
+  end;
+
+implementation
+
+{ TGenRowsFactory }
+
+procedure TGenRowsFactory.dispose;
+begin
+  Destroy;
+end;
+
+function TGenRowsFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
+  AMetadata: IRoutineMetadata): IExternalProcedure;
+begin
+  Result := TGenRowsProcedure.create;
+end;
+
+procedure TGenRowsFactory.setup(AStatus: IStatus; AContext: IExternalContext;
+  AMetadata: IRoutineMetadata; AInBuilder, AOutBuilder: IMetadataBuilder);
+begin
+
+end;
+
+{ TGenRowsProcedure }
+
+procedure TGenRowsProcedure.dispose;
+begin
+  Destroy;
+end;
+
+procedure TGenRowsProcedure.getCharSet(AStatus: IStatus;
+  AContext: IExternalContext; AName: PAnsiChar; ANameSize: Cardinal);
+begin
+
+end;
+
+function TGenRowsProcedure.open(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer): IExternalResultSet;
+begin
+  // если один из входных аргументов NULL ничего не возвращаем
+  if PInput(AInMsg).startNull or PInput(AInMsg).finishNull then
+  begin
+    POutput(AOutMsg).nNull := True;
+    Result := nil;
+    exit;
+  end;
+  // проверки
+  if PInput(AInMsg).start > PInput(AInMsg).finish then
+    raise Exception.Create('First parameter greater then second parameter.');
+
+  Result := TGenRowsResultSet.create;
+  with TGenRowsResultSet(Result) do
+  begin
+    Input := AInMsg;
+    Output := AOutMsg;
+    // начальное значение
+    Output.nNull := False;
+    Output.n := Input.start - 1;
+  end;
+end;
+
+{ TGenRowsResultSet }
+
+procedure TGenRowsResultSet.dispose;
+begin
+  Destroy;
+end;
+
+// Если возвращает True то извлекается очередная запись из набора данных.
+// Если возвращает False то записи в наборе данных закончились
+// новые значения в выходном векторе вычисляются каждый раз при вызове этого метода
+function TGenRowsResultSet.fetch(AStatus: IStatus): Boolean;
+begin
+  Inc(Output.n);
+  Result := (Output.n <= Input.finish);
+end;
+
+end.        
+        ]]>
+      </programlisting>
+    </para>
+    <para>В методе <methodname>open</methodname> экземпляра процедуры
+        <classname>TGenRowsProcedure</classname> проверяем первый и второй входной аргумент на
+      значение NULL, если один из аргументов равен NULL, то и выходной аргумент равен NULL, кроме
+      того процедура не должна вернуть ни одной строки при выборке через оператор SELECT, поэтому
+      результатом этого метода будет nil.</para>
+    <para>Кроме того мы проверяем, чтобы первый аргумент не превышал значение второго, в противном
+      случае бросаем исключение. Не волнуйтесь это исключение будет перехвачено в подсистеме UDR и
+      преобразовано к исключению Firebird. Это одно из преимуществ новых UDR перед старыми
+      UDF.</para>
+    <para>Поскольку мы создаём процедуру выбора, то метод <methodname>open</methodname> должен
+      возвращать экземпляр набора данных, который реализует интрефейс
+        <interfacename>IExternalResultSet</interfacename>. Для упрощения унаследуем свой набор
+      данных от класса <classname>IExternalResultSetImpl</classname>.</para>
   </section>
 </chapter>

@@ -21,28 +21,26 @@ type
     function Read(AStatus: IStatus; var Buffer; Count: Longint): Longint;
     function Write(AStatus: IStatus; const Buffer; Count: Longint): Longint;
     procedure GetBlobInfo(AStatus: IStatus; var NumSegments, MaxSegmentSize,
-                       TotalSize: Longint; var BlobType: Smallint);
+      TotalSize: Longint; var BlobType: Smallint);
     procedure LoadFromStream(AStatus: IStatus; AStream: TStream);
     procedure SaveToStream(AStatus: IStatus; AStream: TStream);
   end;
-
 
 implementation
 
 uses Math;
 
 const
-(**************************)
-(* Blob information items *)
-(**************************)
-  isc_info_end	= 1;
-  isc_info_truncated	= 2;
-  isc_info_error	= 3;
-  isc_info_blob_num_segments	= 4;
-  isc_info_blob_max_segment	= 5;
-  isc_info_blob_total_length	= 6;
-  isc_info_blob_type	= 7;
-
+  (* ************************ *)
+  (* Blob information items *)
+  (* ************************ *)
+  isc_info_end = 1;
+  isc_info_truncated = 2;
+  isc_info_error = 3;
+  isc_info_blob_num_segments = 4;
+  isc_info_blob_max_segment = 5;
+  isc_info_blob_total_length = 6;
+  isc_info_blob_type = 7;
 
 function isc_portable_integer(const ptr: PByte; length: Smallint): Int64;
 var
@@ -67,16 +65,16 @@ begin
     Inc(i);
   end;
 
-  Result :=  value;
+  Result := value;
 end;
 
 { TFbBlobHelper }
 
-procedure TFbBlobHelper.GetBlobInfo(AStatus: IStatus; var NumSegments,
-  MaxSegmentSize, TotalSize: Integer; var BlobType: Smallint);
+procedure TFbBlobHelper.GetBlobInfo(AStatus: IStatus;
+  var NumSegments, MaxSegmentSize, TotalSize: Integer; var BlobType: Smallint);
 var
-  items: array[0..3] of Byte;
-  results: array[0..99] of Byte;
+  items: array [0 .. 3] of Byte;
+  results: array [0 .. 99] of Byte;
   i, item_length: Integer;
   item: Integer;
 begin
@@ -88,7 +86,7 @@ begin
   Self.getInfo(AStatus, 4, @items[0], Sizeof(results), @results);
 
   i := 0;
-  while (i < SizeOf(results)) and (results[i] <> Byte(isc_info_end)) do
+  while (i < Sizeof(results)) and (results[i] <> Byte(isc_info_end)) do
   begin
     item := Integer(results[i]);
     Inc(i);
@@ -126,7 +124,8 @@ begin
   end;
 end;
 
-function TFbBlobHelper.Read(AStatus: IStatus; var Buffer; Count: Integer): Longint;
+function TFbBlobHelper.Read(AStatus: IStatus; var Buffer;
+  Count: Integer): Longint;
 var
   xLocalLength: Shortint;
   xLocalBuffer: PByte;
@@ -146,34 +145,36 @@ begin
   until ((xRetutnCode <> IStatus.RESULT_OK) and
     (xRetutnCode <> IStatus.RESULT_SEGMENT)) or (Count = 0);
   if (xRetutnCode <> IStatus.RESULT_OK) and
-     (xRetutnCode <> IStatus.RESULT_SEGMENT) and
-     (xRetutnCode <> IStatus.RESULT_NO_DATA) then
-     FBException.checkException(AStatus);
+    (xRetutnCode <> IStatus.RESULT_SEGMENT) and
+    (xRetutnCode <> IStatus.RESULT_NO_DATA) then
+    FBException.checkException(AStatus);
 end;
 
 procedure TFbBlobHelper.SaveToStream(AStatus: IStatus; AStream: TStream);
 var
   xInfo: TFbBlobInfo;
-  buffer: array [0 .. 32767] of Byte;
+  Buffer: array [0 .. 32767] of Byte;
   xBytesRead: Cardinal;
 begin
-  Self.GetBlobInfo(AStatus, xInfo.NumSegments, xInfo.MaxSegmentSize, xInfo.TotalLength, xInfo.BlobType);
+  Self.GetBlobInfo(AStatus, xInfo.NumSegments, xInfo.MaxSegmentSize,
+    xInfo.TotalLength, xInfo.BlobType);
   AStream.Size := xInfo.TotalLength;
   AStream.Position := 0;
-    while True do
-    begin
-      case Self.getSegment(AStatus, SizeOf(buffer), @buffer, @xBytesRead) of
-        IStatus.RESULT_OK:
-          AStream.WriteBuffer(buffer, xBytesRead);
-        IStatus.RESULT_SEGMENT:
-          AStream.WriteBuffer(buffer, xBytesRead);
-      else
-        break;
-      end;
+  while True do
+  begin
+    case Self.getSegment(AStatus, Sizeof(Buffer), @Buffer, @xBytesRead) of
+      IStatus.RESULT_OK:
+        AStream.WriteBuffer(Buffer, xBytesRead);
+      IStatus.RESULT_SEGMENT:
+        AStream.WriteBuffer(Buffer, xBytesRead);
+    else
+      break;
     end;
+  end;
 end;
 
-function TFbBlobHelper.Write(AStatus: IStatus; const Buffer; Count: Integer): Longint;
+function TFbBlobHelper.Write(AStatus: IStatus; const Buffer;
+  Count: Integer): Longint;
 var
   xLocalBuffer: PByte;
   xLocalLength: Shortint;

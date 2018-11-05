@@ -1,4 +1,4 @@
-unit UdrInit;
+﻿unit UdrInit;
 
 {$IFDEF FPC}
   {$MODE objfpc}{$H+}
@@ -9,6 +9,7 @@ interface
 uses
   Firebird,
   SumArgsFunc,
+  SumArgsProc,
   GenRowsProc;
 
 // точка входа для External Engine модуля UDR
@@ -25,8 +26,9 @@ function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
 begin
   // регистрируем наши функции
-  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFactory.Create());
+  AUdrPlugin.registerFunction(AStatus, 'sum_args', TSumArgsFunctionFactory.Create());
   // регистрируем наши процедуры
+  AUdrPlugin.registerProcedure(AStatus, 'sum_args_proc', TSumArgsProcedureFactory.create());
   AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
   // регистриуем наши триггеры
   //AUdrPlugin.registerTrigger(AStatus, 'replicate', TReplicateFactory.create());

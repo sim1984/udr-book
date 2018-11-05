@@ -1,13 +1,13 @@
 library MyUdr;
 
 {$IFDEF FPC}
-  {$MODE DELPHI}{$H+}
+{$MODE DELPHI}{$H+}
 {$ENDIF}
 
 uses
-  {$IFDEF unix}
+{$IFDEF unix}
   cthreads,
-  {$ENDIF }
+{$ENDIF }
   Firebird in '..\Common\Firebird.pas',
   FbTypes in '..\Common\FbTypes.pas',
   FbCharsets in '..\Common\FbCharsets.pas',
@@ -20,5 +20,3 @@ uses
 exports firebird_udr_plugin;
 
 end.
-
-

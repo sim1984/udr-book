@@ -11,7 +11,8 @@ uses
   Firebird in '..\Common\Firebird.pas',
   UdrInit in 'UdrInit.pas',
   SumArgsFunc in 'SumArgsFunc.pas',
-  GenRowsProc in 'GenRowsProc.pas';
+  GenRowsProc in 'GenRowsProc.pas',
+  SumArgsProc in 'SumArgsProc.pas';
 
 exports firebird_udr_plugin;
 

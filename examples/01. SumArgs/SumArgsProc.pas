@@ -1,7 +1,7 @@
 unit SumArgsProc;
 
 {$IFDEF FPC}
-{$MODE objfpc}{$H+}
+{$MODE DELPHI}{$H+}
 {$ENDIF}
 
 interface
@@ -91,7 +91,8 @@ type
       @param(AContext Контекст выполнения внешней функции)
       @param(AInMsg Указатель на входное сообщение)
       @param(AOutMsg Указатель на выходное сообщение)
-      @returns(Набор данных для селективной процедуры или nil для процедур выполнения)
+      @returns(Набор данных для селективной процедуры или
+               nil для процедур выполнения)
     }
     function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
       AOutMsg: Pointer): IExternalResultSet; override;

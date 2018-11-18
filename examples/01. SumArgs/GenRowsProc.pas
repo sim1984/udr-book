@@ -1,4 +1,4 @@
-unit GenRowsProc;
+﻿unit GenRowsProc;
 
 {$IFDEF FPC}
 {$MODE DELPHI}{$H+}
@@ -88,7 +88,8 @@ type
       @param(AContext Контекст выполнения внешней функции)
       @param(AInMsg Указатель на входное сообщение)
       @param(AOutMsg Указатель на выходное сообщение)
-      @returns(Набор данных для селективной процедуры или nil для процедур выполнения)
+      @returns(Набор данных для селективной процедуры или
+               nil для процедур выполнения)
     }
     function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
       AOutMsg: Pointer): IExternalResultSet; override;
@@ -181,7 +182,8 @@ end;
 
 // Если возвращает True то извлекается очередная запись из набора данных.
 // Если возвращает False то записи в наборе данных закончились
-// новые значения в выходном векторе вычисляются каждый раз при вызове этого метода
+// новые значения в выходном векторе вычисляются каждый раз
+// при вызове этого метода
 function TGenRowsResultSet.fetch(AStatus: IStatus): Boolean;
 begin
   Inc(Output.n);

@@ -125,6 +125,7 @@
     </meta>
     <projectTree name="udr.xpr">
         <file name="framework.xml"/>
+        <file name="messages.xml"/>
         <file name="psql.xml"/>
         <file name="udr.xml"/>
         <file name="intro.xml"/>

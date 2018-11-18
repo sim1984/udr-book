@@ -1,7 +1,7 @@
 library MyUdr;
 
 {$IFDEF FPC}
-  {$MODE objfpc}{$H+}
+  {$MODE DELPHI}{$H+}
 {$ENDIF}
 
 uses
@@ -12,7 +12,8 @@ uses
   UdrInit in 'UdrInit.pas',
   SumArgsFunc in 'SumArgsFunc.pas',
   GenRowsProc in 'GenRowsProc.pas',
-  SumArgsProc in 'SumArgsProc.pas';
+  SumArgsProc in 'SumArgsProc.pas',
+  TestTrigger in 'TestTrigger.pas';
 
 exports firebird_udr_plugin;
 

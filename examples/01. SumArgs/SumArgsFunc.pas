@@ -1,7 +1,7 @@
 ﻿unit SumArgsFunc;
 
 {$IFDEF FPC}
-{$MODE objfpc}{$H+}
+{$MODE DELPHI}{$H+}
 {$ENDIF}
 
 interface
@@ -9,17 +9,17 @@ interface
 uses
   Firebird;
 
-  { **********************************************************
+{ **********************************************************
 
-    create function sum_args (
-      n1 integer,
-      n2 integer,
-      n3 integer
-    ) returns integer
-    external name 'myudr!sum_args'
-    engine udr;
+  create function sum_args (
+    n1 integer,
+    n2 integer,
+    n3 integer
+  ) returns integer
+  external name 'myudr!sum_args'
+  engine udr;
 
-    ********************************************************* }
+  ********************************************************* }
 
 type
   // структура на которое будет отображено входное сообщение
@@ -31,6 +31,7 @@ type
     n3: Integer;
     n3Null: WordBool;
   end;
+
   PSumArgsInMsg = ^TSumArgsInMsg;
 
   // структура на которое будет отображено выходное сообщение
@@ -38,6 +39,7 @@ type
     result: Integer;
     resultNull: WordBool;
   end;
+
   PSumArgsOutMsg = ^TSumArgsOutMsg;
 
   // Фабрика для создания экземпляра внешней функции TSumArgsFunction
@@ -106,14 +108,15 @@ begin
   Destroy;
 end;
 
-function TSumArgsFunctionFactory.newItem(AStatus: IStatus; AContext: IExternalContext;
-  AMetadata: IRoutineMetadata): IExternalFunction;
+function TSumArgsFunctionFactory.newItem(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
 begin
-  Result := TSumArgsFunction.Create();
+  result := TSumArgsFunction.Create();
 end;
 
-procedure TSumArgsFunctionFactory.setup(AStatus: IStatus; AContext: IExternalContext;
-  AMetadata: IRoutineMetadata; AInBuilder, AOutBuilder: IMetadataBuilder);
+procedure TSumArgsFunctionFactory.setup(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata;
+  AInBuilder, AOutBuilder: IMetadataBuilder);
 begin
 
 end;
@@ -140,7 +143,7 @@ begin
   // в противном случае считаем сумму аргументов
   with xInput^ do
   begin
-    if not (n1Null or n2Null or n3Null) then
+    if not(n1Null or n2Null or n3Null) then
     begin
       xOutput^.result := n1 + n2 + n3;
       // раз есть результат, то сбрасываем NULL флаг

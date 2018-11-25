@@ -8,14 +8,14 @@
       <Unit0>
         <Filename Value="MyUdr.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="35" Y="16"/>
+        <IsVisibleTab Value="True"/>
+        <CursorPos X="3" Y="18"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
         <Filename Value="UdrInit.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
@@ -40,13 +40,14 @@
       </Unit3>
       <Unit4>
         <Filename Value="GenRowsProc.pas"/>
+        <IsPartOfProject Value="True"/>
         <EditorIndex Value="2"/>
         <TopLine Value="159"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit4>
     </Units>
-    <JumpHistory Count="8" HistoryIndex="7">
+    <JumpHistory Count="7" HistoryIndex="6">
       <Position1>
         <Filename Value="MyUdr.lpr"/>
         <Caret Line="4" Column="34"/>
@@ -56,29 +57,25 @@
         <Caret Line="16" Column="38"/>
       </Position2>
       <Position3>
-        <Filename Value="UdrInit.pas"/>
-        <Caret TopLine="16"/>
-      </Position3>
-      <Position4>
         <Filename Value="MyUdr.lpr"/>
         <Caret Line="15" Column="3"/>
-      </Position4>
-      <Position5>
+      </Position3>
+      <Position4>
         <Filename Value="SumArgsFunc.pas"/>
         <Caret Line="15" Column="44" TopLine="7"/>
-      </Position5>
-      <Position6>
+      </Position4>
+      <Position5>
         <Filename Value="GenRowsProc.pas"/>
         <Caret Line="85" Column="75" TopLine="66"/>
+      </Position5>
+      <Position6>
+        <Filename Value="MyUdr.lpr"/>
+        <Caret Line="16" Column="34"/>
       </Position6>
       <Position7>
         <Filename Value="MyUdr.lpr"/>
-        <Caret Line="16" Column="34"/>
-      </Position7>
-      <Position8>
-        <Filename Value="MyUdr.lpr"/>
         <Caret Line="4" Column="67"/>
-      </Position8>
+      </Position7>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>

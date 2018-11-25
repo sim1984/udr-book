@@ -3,6 +3,287 @@
     <info>
         <title>Сообщения</title>
     </info>
-    
-    <para/>
-</chapter>    
+
+    <para>Под сообщением в UDR понимается область памяти фиксированного размера для передачи в
+        процедуру или функцию входных аргументов, или возврата выходных аргументов. Для внешних
+        триггеров на события записи таблицы сообщения используются для получения и возврата данных в
+        NEW и OLD.</para>
+
+    <para>Для доступа к отдельным переменным или полям таблицы, необходимо знать как минимум тип
+        этой переменной, и смещение от начала буфера сообщений. Как уже упомяналось ранее для этого
+        существует два способа: <itemizedlist>
+            <listitem>
+                <para>преобразование указателя на буфер сообщения к указателю на статическую
+                    структуру (в Delphi это запись, т.е. record);</para>
+            </listitem>
+            <listitem>
+                <para>получение смещений с помощью экземляра класса реализующего интерфейс
+                        <interfacename>IMessageMetadata</interfacename>, и чтение/запись из буфера
+                    данных, размером соответсвующим типу переменной или поля.</para>
+            </listitem>
+        </itemizedlist></para>
+
+    <para>Первый способ является наиболее быстрым, второй — более гибким, так как в ряде случаев
+        позволяет изменять типы и размеры для входных и выходных переменных или полей таблицы без
+        перекомпиляции динамической библиотеки содержащей UDR.</para>
+
+    <section xml:id="message-record">
+        <title>Работа с буфером сообщения с использованием структуры</title>
+
+        <para>Как говорилось выше мы можем работать с буфером сообщений через указатель на
+            структуру. Такая структура выглядит следующим образом: <programlisting>
+<![CDATA[           
+TMyStruct = record
+  <var_1>: <type_1>;
+  <nullIndicator_1>: WordBool;
+  <var_2>: <type_1>;
+  <nullIndicator_2>: WordBool;
+  ...
+  <var_N>: <type_1>;
+  <nullIndicator_N>: WordBool;
+end;
+PMyStruct = ^TMyStruct;
+]]> 
+        </programlisting>
+        </para>
+        <para>Типы членов данных должны соответсвовать типам входных/выходных переменых или полей
+            (для триггеров). Null-индикатор должен быть после каждой переменной/поля, даже если у
+            них есть ограничение NOT NULL. Null-индикатор занимает 2 байта. Значение -1 обозначает
+            что переменная/поле имеют значение NULL. Поскольку на данный момент в NULL-индикатор
+            пишется только признак NULL, то удобно оторазить его на 2-х байтный логичексий тип. Типы
+            даных SQL отображаются в структуре следующим образом: <table frame="all">
+                <?dbfo keep-together='auto'?>
+                <title>Отображение типов SQL на типы Delphi</title>
+                <tgroup cols="3">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                    <colspec colname="c2" colnum="2" colwidth="2.2*"/>
+                    <colspec colname="c3" colnum="3" colwidth="2.0*"/>
+                    <thead>
+                        <row>
+                            <entry>SQL тип</entry>
+                            <entry>Delphi тип</entry>
+                            <entry>Замечание</entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry><code>BOOLEAN</code></entry>
+                            <entry><code>Boolean</code>, <code>ByteBool</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>SMALLINT</code></entry>
+                            <entry><code>Smallint</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>INTEGER</code></entry>
+                            <entry><code>Integer</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>BIGINT</code></entry>
+                            <entry><code>Int64</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>FLOAT</code></entry>
+                            <entry><code>Single</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>DOUBLE PRECISION</code></entry>
+                            <entry><code>Double</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>NUMERIC(<replaceable>N</replaceable>,
+                                        <replaceable>M</replaceable>)</code></entry>
+                            <entry><para> Тип данных зависит от точности и диалекта: <itemizedlist>
+                                        <listitem>
+                                            <para>1-4 — <code>Smallint</code>;</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>5-9 — <code>Integer</code>;</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>10-18 (3 диалект) — <code>Int64</code>;</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>10-15 (1 диалект) — <code>Double</code>.</para>
+                                        </listitem>
+                                    </itemizedlist></para></entry>
+                            <entry><para>В качестве значения в сообщение будет передано число
+                                    умноженное на 10<superscript>M</superscript>.</para></entry>
+                        </row>
+                        <row>
+                            <entry><code>DECIMAL(<replaceable>N</replaceable>,
+                                        <replaceable>M</replaceable>)</code></entry>
+                            <entry><para> Тип данных зависит от точности и диалекта: <itemizedlist>
+                                        <listitem>
+                                            <para>1-4 — <code>Integer</code>;</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>5-9 — <code>Integer</code>;</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>10-18 (3 диалект) — <code>Int64</code>;</para>
+                                        </listitem>
+                                        <listitem>
+                                            <para>10-15 (1 диалект) — <code>Double</code>.</para>
+                                        </listitem>
+                                    </itemizedlist></para></entry>
+                            <entry><para>В качестве значения в сообщение будет передано число
+                                    умноженное на 10<superscript>M</superscript>.</para></entry>
+                        </row>
+                        <row>
+                            <entry><code>CHAR(<replaceable>N</replaceable>)</code></entry>
+                            <entry><code>array[0 .. <replaceable>M</replaceable>] of
+                                AnsiChar</code></entry>
+                            <entry><para><replaceable>M</replaceable> вычисляется по формуле <code>M
+                                        = N * BytesPerChar - 1</code>, где
+                                        <replaceable>BytesPerChar</replaceable> - количество байт на
+                                    символ, зависит от кодировки переменной/поля. Например для UTF-8
+                                    - это 4 байт/символ, для WIN1251 - 1 байт/символ.</para></entry>
+                        </row>
+                        <row>
+                            <entry><code>VARCHAR(<replaceable>N</replaceable>)</code></entry>
+                            <entry><para>
+                                    <programlisting>
+record
+  Length: Smallint;
+  Data: array[0 .. <replaceable>M</replaceable>] of AnsiChar;
+end
+                                </programlisting>
+                                </para></entry>
+                            <entry><para><replaceable>M</replaceable> вычисляется по формуле <code>M
+                                        = N * BytesPerChar - 1</code>, где
+                                        <replaceable>BytesPerChar</replaceable> - количество байт на
+                                    символ, зависит от кодировки переменной/поля. Например для UTF-8
+                                    - это 4 байт/символ, для WIN1251 - 1 байт/символ. В
+                                        <replaceable>Length</replaceable> передаётся реальная длина
+                                    строки в байтах.</para></entry>
+                        </row>
+                        <row>
+                            <entry><code>DATE</code></entry>
+                            <entry><code>ISC_DATE</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>TIME</code></entry>
+                            <entry><code>ISC_TIME</code></entry>
+                            <entry/>
+                        </row>
+                        <row>
+                            <entry><code>TIMESTAMP</code></entry>
+                            <entry><code>ISC_TIMESTAMP</code></entry>
+                            <entry><para>Тип <code>ISC_TIMESTAMP</code> не определён в
+                                        <filename>Firebird.pas</filename>, вы можете определить его
+                                    сами следующим образом:
+                                    <programlisting>
+ISC_TIMESTAMP = record
+  date: ISC_DATE;
+  time: ISC_TIME;
+end;                                    
+                                </programlisting>
+                                </para></entry>
+                        </row>
+                        <row>
+                            <entry><code>BLOB</code></entry>
+                            <entry><code>ISC_QUAD</code></entry>
+                            <entry><para>Содержимое BLOB никогда не передаётся непосредственно,
+                                    вместо него передаётся BlobId. Как работать с типом BLOB
+                                    расскажем ползже.</para></entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table></para>
+        <para>Теперь рассмотрим несколько примеров того как составлять структуры сообщений по
+            декларациям процедур, функций или триггеров.</para>
+        <example>
+            <title>Структуры сообщений для функции</title>
+            
+            <para>Предположим у нас есть внешняя функция объявленная следующим образом: <programlisting language="sql">
+<![CDATA[
+function SUM_ARGS(A SMALLINT, B INTEGER) RETURNS BIGINT
+....
+]]> 
+            </programlisting>
+            </para>
+            <para>В этом случае структуры для входных и выходных сообщений будут выглядеть так:
+                <programlisting language="delphi">
+<![CDATA[
+TInput = record
+  A: Smallint;
+  ANull: WordBool;
+  B: Integer;
+  BNull: WordBool;
+end;
+PInput = ^TInput;
+
+TOutput = record
+  Value: Int64;
+  Null: WordBool;
+end;
+POutput = ^TOutput;
+]]> 
+            </programlisting>
+            </para>
+            <para>Если таже самая функия определена с другими типами (в 3 диалекте):
+                <programlisting language="sql">
+<![CDATA[
+function SUM_ARGS(A NUMERIC(4, 2), B NUMERIC(9, 3)) RETURNS NUMERIC(18, 6)
+....
+]]> 
+            </programlisting>   
+            </para>
+            <para>В этом случае структуры для входных и выходных сообщений будут выглядеть так:
+                <programlisting language="delphi">
+<![CDATA[
+TInput = record
+  A: Smallint;
+  ANull: WordBool;
+  B: Integer;
+  BNull: WordBool;
+end;
+PInput = ^TInput;
+
+TOutput = record
+  Value: Int64;
+  Null: WordBool;
+end;
+POutput = ^TOutput;
+]]> 
+            </programlisting>
+            </para>
+        </example>
+        <example>
+            <title>Структуры сообщений для строковых параметров</title>
+            
+            <para>Предположим у нас есть внешняя процедура объявленная следующим образом: 
+                <programlisting language="sql">
+<![CDATA[
+procedure SOME_PROC(A CHAR(3) CHARACTER SET WIN1251, B VARCHAR(10) CHARACTER SET UTF8)
+....
+]]> 
+            </programlisting>            
+            </para>
+            <para>В этом случае структуры для входного сообщений будет выглядеть так:
+                <programlisting language="delphi">
+<![CDATA[
+TInput = record
+  A: array[0..2] of AnsiChar;
+  ANull: WordBool;
+  B: record
+    Length: Smallint;
+    Value: array[0..39] of AnsiChar;
+  end;  
+  BNull: WordBool;
+end;
+PInput = ^TInput;
+]]> 
+            </programlisting>                
+            </para>    
+        </example>    
+    </section>
+</chapter>

@@ -202,7 +202,7 @@ end;
             декларациям процедур, функций или триггеров.</para>
         <example>
             <title>Структуры сообщений для функции</title>
-            
+
             <para>Предположим у нас есть внешняя функция объявленная следующим образом: <programlisting language="sql">
 <![CDATA[
 function SUM_ARGS(A SMALLINT, B INTEGER) RETURNS BIGINT
@@ -210,8 +210,7 @@ function SUM_ARGS(A SMALLINT, B INTEGER) RETURNS BIGINT
 ]]> 
             </programlisting>
             </para>
-            <para>В этом случае структуры для входных и выходных сообщений будут выглядеть так:
-                <programlisting language="delphi">
+            <para>В этом случае структуры для входных и выходных сообщений будут выглядеть так: <programlisting language="delphi">
 <![CDATA[
 TInput = record
   A: Smallint;
@@ -229,16 +228,14 @@ POutput = ^TOutput;
 ]]> 
             </programlisting>
             </para>
-            <para>Если таже самая функия определена с другими типами (в 3 диалекте):
-                <programlisting language="sql">
+            <para>Если таже самая функия определена с другими типами (в 3 диалекте): <programlisting language="sql">
 <![CDATA[
 function SUM_ARGS(A NUMERIC(4, 2), B NUMERIC(9, 3)) RETURNS NUMERIC(18, 6)
 ....
 ]]> 
-            </programlisting>   
+            </programlisting>
             </para>
-            <para>В этом случае структуры для входных и выходных сообщений будут выглядеть так:
-                <programlisting language="delphi">
+            <para>В этом случае структуры для входных и выходных сообщений будут выглядеть так: <programlisting language="delphi">
 <![CDATA[
 TInput = record
   A: Smallint;
@@ -259,17 +256,15 @@ POutput = ^TOutput;
         </example>
         <example>
             <title>Структуры сообщений для строковых параметров</title>
-            
-            <para>Предположим у нас есть внешняя процедура объявленная следующим образом: 
-                <programlisting language="sql">
+
+            <para>Предположим у нас есть внешняя процедура объявленная следующим образом: <programlisting language="sql">
 <![CDATA[
 procedure SOME_PROC(A CHAR(3) CHARACTER SET WIN1251, B VARCHAR(10) CHARACTER SET UTF8)
 ....
 ]]> 
-            </programlisting>            
+            </programlisting>
             </para>
-            <para>В этом случае структуры для входного сообщений будет выглядеть так:
-                <programlisting language="delphi">
+            <para>В этом случае структуры для входного сообщений будет выглядеть так: <programlisting language="delphi">
 <![CDATA[
 TInput = record
   A: array[0..2] of AnsiChar;
@@ -282,8 +277,401 @@ TInput = record
 end;
 PInput = ^TInput;
 ]]> 
-            </programlisting>                
-            </para>    
-        </example>    
+            </programlisting>
+            </para>
+        </example>
+    </section>
+    <section xml:id="message-metadata">
+        <info>
+            <title>Работа с буфером сообщений с помощью IMessageMetadata</title>
+        </info>
+
+        <para>Как было описано выше с буфером сообщений можно работать с использованием экземляра
+            объекта реализующего интерфейс <interfacename>IMessageMetadata</interfacename>. Этот
+            интерфейс позволеят узнать о переменной/поле следующие сведения: <itemizedlist>
+                <listitem>
+                    <para>имя переменной/поля;</para>
+                </listitem>
+                <listitem>
+                    <para>тип данных;</para>
+                </listitem>
+                <listitem>
+                    <para>набор символов для строковых данных;</para>
+                </listitem>
+                <listitem>
+                    <para>подтип для типа данных BLOB;</para>
+                </listitem>
+                <listitem>
+                    <para>размер буфера в байтах под переменную/поле;</para>
+                </listitem>
+                <listitem>
+                    <para>может ли переменная/поле принимать значение NULL;</para>
+                </listitem>
+                <listitem>
+                    <para>смещение в буфере сообщений;</para>
+                </listitem>
+                <listitem>
+                    <para>смещение в буфере сообщений для NULL-индикатора.</para>
+                </listitem>
+            </itemizedlist></para>
+
+        <section xml:id="message-imessagemetadata">
+            <title>Методы интерфейса IMessageMetadata</title>
+
+            <para>
+                <orderedlist>
+                    <listitem>
+                        <para>getCount</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getCount(StatusType* status)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает количество полей/параметров в сообщении. Во всех вызовах,
+                            содержащих индексный параметр, это значение должно быть: 0 &lt;= index
+                            &lt; getCount(). </para>
+                    </listitem>
+                    <listitem>
+                        <para>getField</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+const char* getField(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает имя поля. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getRelation</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+const char* getRelation(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает имя отношения (из которого выбрано данное поле). </para>
+                    </listitem>
+                    <listitem>
+                        <para>getOwner</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+const char* getOwner(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает имя владельца отношения. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getAlias</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+const char* getAlias(StatusType* status, unsigned index) 
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает псевдоним поля. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getType</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getType(StatusType* status, unsigned index) 
+]]>
+</programlisting>
+                        </para>
+                        <para>вовзращает SQL тип поля. </para>
+                    </listitem>
+                    <listitem>
+                        <para>isNullable</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+FB_BOOLEAN isNullable(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает true, если поле может принимать значение NULL. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getSubType</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+int getSubType(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает подтип поля BLOB (0 - двоичный, 1 - текст и т. д.). </para>
+                    </listitem>
+                    <listitem>
+                        <para>getLength</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getLength(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает максимальную длину поля. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getScale</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+int getScale(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает масштаб для числового поля. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getCharSet</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getCharSet(StatusType* status, unsigned index)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает набор символов для символьных полей и текстового BLOB.
+                        </para>
+                    </listitem>
+                    <listitem>
+                        <para>getOffset</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getOffset(StatusType* status, unsigned index) 
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает смещение данных поля в буфере сообщений (используйте его
+                            для доступа к данным в буфере сообщений). </para>
+                    </listitem>
+                    <listitem>
+                        <para>getNullOffset</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getNullOffset(StatusType* status, unsigned index)  
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает смещение NULL индикатора для поля в буфере сообщений.
+                        </para>
+                    </listitem>
+                    <listitem>
+                        <para>getBuilder</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+IMetadataBuilder* getBuilder(StatusType* status) 
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает интерфейс <interfacename>IMetadataBuilder</interfacename>,
+                            инициализированный метаданными этого сообщения. </para>
+                    </listitem>
+                    <listitem>
+                        <para>getMessageLength</para>
+                        <para>
+                            <programlisting language="cpp">
+<![CDATA[
+unsigned getMessageLength(StatusType* status)
+]]>
+</programlisting>
+                        </para>
+                        <para>возвращает длину буфера сообщения (используйте его для выделения
+                            памяти под буфер). </para>
+                    </listitem>
+                </orderedlist>
+            </para>
+        </section>
+        <section>
+            <title>Получение и использование IMessageMetadata</title>
+
+            <para>Экземпляры объектов реализующих интерфейс IMessageMetadata не передаются
+                непосредственно в экземпляры процедуры, функции или триггера. Это необходимо делать
+                явно в фабриках соответсвующих классов. Для этого используется экземпляр объекта
+                реализующего интерфейс <interfacename>IRoutineMetadata</interfacename>. Например: <programlisting language="delphi">
+<![CDATA[
+  // Фабрика для создания экземпляра внешней функции TSumArgsFunction
+  TSumArgsFunctionFactory = class(IUdrFunctionFactoryImpl)
+    // Вызывается при уничтожении фабрики
+    procedure dispose(); override;
+
+    { Выполняется каждый раз при загрузке внешней функции в кеш метаданных
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AMetadata Метаданные внешней функции)
+      @param(AInBuilder Построитель сообщения для входных метаданных)
+      @param(AOutBuilder Построитель сообщения для выходных метаданных)
+    }
+    procedure setup(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
+      AOutBuilder: IMetadataBuilder); override;
+
+    { Создание нового экземпляра внешней функции TSumArgsFunction
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AMetadata Метаданные внешней функции)
+      @returns(Экземпляр внешней функции)
+    }
+    function newItem(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata): IExternalFunction; override;
+  end;
+ 
+  // Внешняя функция TSumArgsFunction.
+  TSumArgsFunction = class(IExternalFunctionImpl)
+  private
+    FInputMetadata: IMessageMetadata;
+    FOutputMetadata: IMessageMetadata;
+  public
+    property InputMetadata: IMessageMetadata read FInputMetadata
+      write FInputMetadata;
+    property OutputMetadata: IMessageMetadata read FOutputMetadata
+      write FOutputMetadata;
+  public
+    // Вызывается при уничтожении экземпляра функции
+    procedure dispose(); override;
+
+    { Этот метод вызывается непосредственно перед execute и сообщает
+      ядру наш запрошенный набор символов для обмена данными внутри
+      этого метода. Во время этого вызова контекст использует набор символов,
+      полученный из ExternalEngine::getCharSet.
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AName Имя набора символов)
+      @param(AName Длина имени набора символов)
+    }
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
+    { Выполнение внешней функции
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AInMsg Указатель на входное сообщение)
+      @param(AOutMsg Указатель на выходное сообщение)
+    }
+    procedure execute(AStatus: IStatus; AContext: IExternalContext;
+      AInMsg: Pointer; AOutMsg: Pointer); override;
+  end; 
+........................
+
+{ TSumArgsFunctionFactory }
+
+procedure TSumArgsFunctionFactory.dispose;
+begin
+  Destroy;
+end;
+
+function TSumArgsFunctionFactory.newItem(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
+begin
+  Result := TSumArgsFunction.Create();
+  with Result as TSumArgsFunction do
+  begin
+    InputMetadata := AMetadata.getInputMetadata(AStatus);
+    OutputMetadata := AMetadata.getOutputMetadata(AStatus);
+  end;
+end;
+
+procedure TSumArgsFunctionFactory.setup(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata;
+  AInBuilder, AOutBuilder: IMetadataBuilder);
+begin
+
+end;
+]]>
+</programlisting>
+            </para>
+
+            <important>
+                <para>Обратите внимание, жизненный цикл объектов интерфейса
+                        <interfacename>IMessageMetadata</interfacename> управляется с помощью
+                    подсчёта ссылок. Он наследует интерфейс
+                        <interfacename>IReferenceCounted</interfacename>. Методы
+                        <methodname>getInputMetadata</methodname> и
+                        <methodname>getOutputMetadata</methodname> увеличивают счётчик ссылок на 1
+                    для возвращаемых объектов, поэтому в методе <methodname>dispose</methodname>
+                    класса <classname>TSumArgsFunction</classname> уменьшить счётчик ссылок для
+                    членов класса <code>FInputMetadata</code> и <code>FOutputMetadata</code> вызывав
+                    метод <methodname>release</methodname>. </para>
+            </important>
+
+            <para>Для получения значения соответсвующего входного аргумента нам необходимо
+                воспользоваться адресной арифметикой. Для этого получаем смещение из
+                    <interfacename>IMessageMetadata</interfacename> с момощью метода
+                    <methodname>getOffset</methodname> и прибавляем к адресу буфера для входного
+                сообщения. После чего полученный результат приводим к соответсвующему
+                типизированному указателю. Примерна такая же схема работы для получения null
+                индикаторов аргументов, только для получения смещений сипользуется метод
+                    <methodname>getNullOffset</methodname>..</para>
+            <para>
+                <programlisting language="delphi">
+<![CDATA[
+........................
+{ TSumArgsFunction }
+
+procedure TSumArgsFunction.dispose;
+begin
+  FInputMetadata.release;
+  FInputMetadata := nil;
+  FOutputMetadata.release;
+  FOutputMetadata := nil;
+  Destroy;
+end;
+
+procedure TSumArgsFunction.execute(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer);
+var
+  n1, n2, n3: Integer;
+  n1Null, n2Null, n3Null: WordBool;
+  Result: Integer;
+  resultNull: WordBool;
+begin
+  // получаем значения входных аргументов по их смещениям
+  n1 := PInteger(PByte(AInMsg) + FInputMetadata.getOffset(AStatus, 0))^;
+  n2 := PInteger(PByte(AInMsg) + FInputMetadata.getOffset(AStatus, 1))^;
+  n3 := PInteger(PByte(AInMsg) + FInputMetadata.getOffset(AStatus, 2))^;
+  // получаем значения null-индикаторов входных аргументов по их смещениям
+  n1Null := PWordBool(PByte(AInMsg) + FInputMetadata.getNullOffset(AStatus, 0))^;
+  n2Null := PWordBool(PByte(AInMsg) + FInputMetadata.getNullOffset(AStatus, 1))^;
+  n3Null := PWordBool(PByte(AInMsg) + FInputMetadata.getNullOffset(AStatus, 2))^;
+  // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
+  resultNull := True;
+  Result := 0;
+  // если один из аргументов NULL значит и резултат NULL
+  // в противном случае считаем сумму аргументов=
+  if not(n1Null or n2Null or n3Null) then
+  begin
+    Result := n1 + n2 + n3;
+    // раз есть результат, то сбрасываем NULL флаг
+    resultNull := False;
+  end;
+  PWordBool(PByte(AInMsg) + FOutputMetadata.getNullOffset(AStatus, 0))^ := resultNull;
+  PInteger(PByte(AInMsg) + FOutputMetadata.getOffset(AStatus, 0))^ := Result;
+end;
+
+procedure TSumArgsFunction.getCharSet(AStatus: IStatus;
+  AContext: IExternalContext; AName: PAnsiChar; ANameSize: Cardinal);
+begin
+end;
+]]>
+</programlisting>
+            </para>
+        </section>
     </section>
 </chapter>

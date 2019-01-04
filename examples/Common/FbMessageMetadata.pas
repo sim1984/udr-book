@@ -1,4 +1,4 @@
-unit FbMessageMetadata;
+﻿unit FbMessageMetadata;
 
 {$IFDEF MSWINDOWS}
 {$DEFINE WINDOWS}
@@ -18,13 +18,13 @@ uses Firebird,
   System.Generics.Collections;
 
 const
-  MAX_IDENTIFIER_LENGTH = 31; // дл¤ 4.0 = 63 * 4 -1
+  MAX_IDENTIFIER_LENGTH = 31; // для 4.0 = 63 * 4 -1
 
 type
 
 
 
-  // Ёлемент метаданных
+  // Элемент метаданных
   TFbMessageMetadataItem = class
   private
     FIndex: Cardinal;
@@ -73,7 +73,7 @@ type
     property SQLTypeAsString: string read GetSQLTypeAsString;
   end;
 
-  // ћетаданные
+  // Метаданные
   TFbMessageMetadata = class(TObjectList<TFbMessageMetadataItem>)
   private
     FMessageLength: Cardinal;
@@ -166,11 +166,11 @@ begin
 
     SQL_INT64:
     begin
-      // в 3-м диалекте учитваетс¤ масштаб
+      // в 3-м диалекте учитывается масштаб
       if Scale = 0 then
         Result := 'BIGINT'
       else
-        Result := 'NUMERIC(18 ,' + Abs(Scale).ToString() + ')';
+        Result := 'NUMERIC(18, ' + Abs(Scale).ToString() + ')';
     end;
 
     SQL_FLOAT:
@@ -180,11 +180,11 @@ begin
 
     SQL_DOUBLE, SQL_D_FLOAT:
     begin
-      // в 1-м диалекте учитваетс¤ масштаб
+      // в 1-м диалекте учитывается масштаб
       if Scale = 0 then
         Result := 'DOUBLE PRECISION'
       else
-        Result := 'NUMERIC(15 ,' + Abs(Scale).ToString() + ')';
+        Result := 'NUMERIC(15, ' + Abs(Scale).ToString() + ')';
     end;
 
     SQL_DATE:

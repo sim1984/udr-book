@@ -53,13 +53,9 @@ type
   // Внешняя функция TSumArgsFunction.
   TSumArgsFunction = class(IExternalFunctionImpl)
   private
-    FInputMetadata: IMessageMetadata;
-    FOutputMetadata: IMessageMetadata;
+    FMetadata: IRoutineMetadata;
   public
-    property InputMetadata: IMessageMetadata read FInputMetadata
-      write FInputMetadata;
-    property OutputMetadata: IMessageMetadata read FOutputMetadata
-      write FOutputMetadata;
+    property Metadata: IRoutineMetadata read FMetadata write FMetadata;
   public
     // Вызывается при уничтожении экземпляра функции
     procedure dispose(); override;
@@ -106,8 +102,7 @@ begin
   Result := TSumArgsFunction.Create();
   with Result as TSumArgsFunction do
   begin
-    InputMetadata := AMetadata.getInputMetadata(AStatus);
-    OutputMetadata := AMetadata.getOutputMetadata(AStatus);
+    Metadata := AMetadata;
   end;
 end;
 
@@ -122,10 +117,6 @@ end;
 
 procedure TSumArgsFunction.dispose;
 begin
-  FInputMetadata.release;
-  FInputMetadata := nil;
-  FOutputMetadata.release;
-  FOutputMetadata := nil;
   Destroy;
 end;
 
@@ -136,28 +127,40 @@ var
   n1Null, n2Null, n3Null: WordBool;
   Result: Integer;
   resultNull: WordBool;
+  xInputMetadata, xOutputMetadata: IMessageMetadata;
 begin
-  // получаем значения входных аргументов по их смещениям
-  n1 := PInteger(PByte(AInMsg) + FInputMetadata.getOffset(AStatus, 0))^;
-  n2 := PInteger(PByte(AInMsg) + FInputMetadata.getOffset(AStatus, 1))^;
-  n3 := PInteger(PByte(AInMsg) + FInputMetadata.getOffset(AStatus, 2))^;
-  // получаем значения null-индикаторов входных аргументов по их смещениям
-  n1Null := PWordBool(PByte(AInMsg) + FInputMetadata.getNullOffset(AStatus, 0))^;
-  n2Null := PWordBool(PByte(AInMsg) + FInputMetadata.getNullOffset(AStatus, 1))^;
-  n3Null := PWordBool(PByte(AInMsg) + FInputMetadata.getNullOffset(AStatus, 2))^;
-  // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
-  resultNull := True;
-  Result := 0;
-  // если один из аргументов NULL значит и резултат NULL
-  // в противном случае считаем сумму аргументов=
-  if not(n1Null or n2Null or n3Null) then
-  begin
-    Result := n1 + n2 + n3;
-    // раз есть результат, то сбрасываем NULL флаг
-    resultNull := False;
+  xInputMetadata := FMetadata.getInputMetadata(AStatus);
+  xOutputMetadata := FMetadata.getOutputMetadata(AStatus);
+  try
+    // получаем значения входных аргументов по их смещениям
+    n1 := PInteger(PByte(AInMsg) + xInputMetadata.getOffset(AStatus, 0))^;
+    n2 := PInteger(PByte(AInMsg) + xInputMetadata.getOffset(AStatus, 1))^;
+    n3 := PInteger(PByte(AInMsg) + xInputMetadata.getOffset(AStatus, 2))^;
+    // получаем значения null-индикаторов входных аргументов по их смещениям
+    n1Null := PWordBool(PByte(AInMsg) +
+      xInputMetadata.getNullOffset(AStatus, 0))^;
+    n2Null := PWordBool(PByte(AInMsg) +
+      xInputMetadata.getNullOffset(AStatus, 1))^;
+    n3Null := PWordBool(PByte(AInMsg) +
+      xInputMetadata.getNullOffset(AStatus, 2))^;
+    // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
+    resultNull := True;
+    Result := 0;
+    // если один из аргументов NULL значит и резултат NULL
+    // в противном случае считаем сумму аргументов
+    if not(n1Null or n2Null or n3Null) then
+    begin
+      Result := n1 + n2 + n3;
+      // раз есть результат, то сбрасываем NULL флаг
+      resultNull := False;
+    end;
+    PWordBool(PByte(AInMsg) + xOutputMetadata.getNullOffset(AStatus, 0))^ :=
+      resultNull;
+    PInteger(PByte(AInMsg) + xOutputMetadata.getOffset(AStatus, 0))^ := Result;
+  finally
+    xInputMetadata.release;
+    xOutputMetadata.release;
   end;
-  PWordBool(PByte(AInMsg) + FOutputMetadata.getNullOffset(AStatus, 0))^ := resultNull;
-  PInteger(PByte(AInMsg) + FOutputMetadata.getOffset(AStatus, 0))^ := Result;
 end;
 
 procedure TSumArgsFunction.getCharSet(AStatus: IStatus;

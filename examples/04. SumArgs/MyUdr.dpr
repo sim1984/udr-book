@@ -10,6 +10,7 @@ uses
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
   FbTypes in '..\Common\FbTypes.pas',
+  FbCharsets in '..\Common\FbCharsets.pas',
   FbMessageMetadata in '..\Common\FbMessageMetadata.pas',
   FbMessageData in '..\Common\FbMessageData.pas',
   UdrFactories in '..\Common\UdrFactories.pas',

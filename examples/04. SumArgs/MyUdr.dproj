@@ -96,6 +96,7 @@
         </DelphiCompile>
         <DCCReference Include="..\Common\Firebird.pas"/>
         <DCCReference Include="..\Common\FbTypes.pas"/>
+        <DCCReference Include="..\Common\FbCharsets.pas"/>
         <DCCReference Include="..\Common\FbMessageMetadata.pas"/>
         <DCCReference Include="..\Common\FbMessageData.pas"/>
         <DCCReference Include="..\Common\UdrFactories.pas"/>
@@ -128,7 +129,6 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win32\Debug\MyUdr.dll" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="$(BDS)\Redist\iossimulator\libPCRE.dylib" Class="DependencyModule">
                     <Platform Name="iOSSimulator">
                         <Overwrite>true</Overwrite>
@@ -140,6 +140,7 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="Win64\Release\MyUdr.dll" Configuration="Release" Class="ProjectOutput"/>
+                <DeployFile LocalName="Win32\Debug\MyUdr.dll" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="$(BDS)\Redist\osx32\libcgsqlite3.dylib" Class="DependencyModule">
                     <Platform Name="OSX32">
                         <Overwrite>true</Overwrite>

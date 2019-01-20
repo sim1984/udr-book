@@ -1,4 +1,4 @@
-unit FbMessageData;
+﻿unit FbMessageData;
 
 {$IFDEF FPC}
 {$MODE objfpc}{$H+}
@@ -153,7 +153,7 @@ begin
       Result := Int64.Parse(getString(AIndex));
 
   else
-    raise Exception.Create('Can not convert %s to BIGINT',
+    raise Exception.CreateFmt('Can not convert %s to BIGINT',
       [FMetadata[AIndex].SQLTypeAsString]);
   end;
 end;
@@ -167,7 +167,7 @@ begin
     SQL_TEXT, SQL_VARYING:
       Result := Boolean.Parse(getString(AIndex));
   else
-    raise Exception.Create('Can not convert %s to BOOLEAN',
+    raise Exception.CreateFmt('Can not convert %s to BOOLEAN',
       [FMetadata[AIndex].SQLTypeAsString]);
   end;
 end;
@@ -382,14 +382,14 @@ begin
     SQL_VARYING:
       begin
         xCharLength := PSmallint(FBuffer + xMetadataItem.Offset)^;
-        Result := xMetadataItem.Encoding.getString(@FBuffer,
+        Result := xMetadataItem.Encoding.getString(TBytes(@FBuffer),
           2 + xMetadataItem.Offset, xMetadataItem.DataLength);
         SetLength(Result, xCharLength);
       end;
 
     SQL_TEXT:
       begin
-        Result := xMetadataItem.Encoding.getString(@FBuffer,
+        Result := xMetadataItem.Encoding.getString(TBytes(@FBuffer),
           xMetadataItem.Offset, xMetadataItem.DataLength);
         SetLength(Result, xMetadataItem.MaxCharLength);
       end;
@@ -510,7 +510,7 @@ begin
   else
     begin
       raise Exception.CreateFmt('Can not convert BOOLEAN to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -540,7 +540,7 @@ begin
   else
     begin
       raise Exception.CreateFmt('Can not convert DOUBLE PRECISION to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -563,7 +563,7 @@ begin
   else
     begin
       raise Exception.CreateFmt('Can not convert FLOAT to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -595,7 +595,7 @@ begin
   else
     begin
       raise Exception.CreateFmt('Can not convert INTEGER to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -615,13 +615,13 @@ begin
       begin
         xTimestamp.date := AValue;
         xTimestamp.time := 0;
-        setIscTimestamp(xTimestamp);
+        setIscTimestamp(AIndex, xTimestamp);
       end;
 
   else
     begin
       raise Exception.CreateFmt('Can not convert DATE to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -641,13 +641,13 @@ begin
       begin
         xTimestamp.date := DateToIscDate(Date());
         xTimestamp.time := AValue;
-        setIscTimestamp(xTimestamp);
+        setIscTimestamp(AIndex, xTimestamp);
       end;
 
   else
     begin
       raise Exception.CreateFmt('Can not convert TIME to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -665,7 +665,7 @@ begin
   else
     begin
       raise Exception.CreateFmt('Can not convert TIMESTAMP to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;
@@ -707,7 +707,7 @@ begin
   else
     begin
       raise Exception.CreateFmt('Can not convert SMALLINT to %s',
-        FMetadata[AIndex].SQLTypeAsString);
+        [FMetadata[AIndex].SQLTypeAsString]);
     end;
   end;
 end;

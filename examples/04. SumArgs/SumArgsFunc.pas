@@ -1,4 +1,4 @@
-unit SumArgsFunc;
+﻿unit SumArgsFunc;
 
 {$IFDEF FPC}
 {$MODE objfpc}{$H+}
@@ -71,8 +71,10 @@ begin
   xOutMetadata:= AMetaData.getOutputMetadata(AStatus);
   with TSumArgsFunction(Result) do
   begin
-    FInputMetadata := TFbMessageMetadata.Create(AStatus, xInMetadata);
-    FOutputMetadata := TFbMessageMetadata.Create(AStatus, xOutMetadata);
+    FInputMetadata := TFbMessageMetadata.Create();
+    FOutputMetadata := TFbMessageMetadata.Create();
+    FInputMetadata.Fill(AStatus, xInMetadata);
+    FOutputMetadata.Fill(AStatus, xOutMetadata);
   end;
   xInMetadata.release;
   xOutMetadata.release;

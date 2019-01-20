@@ -22,8 +22,6 @@ const
 
 type
 
-
-
   // Элемент метаданных
   TFbMessageMetadataItem = class
   private
@@ -50,6 +48,9 @@ type
   public
     constructor Create(AStatus: IStatus; AMetaData: IMessageMetadata;
       AIndex: Cardinal);
+    // ---------------
+    function GetDataPtr(ABuffer: PByte): PByte;
+    function GetNullPtr(ABuffer: PByte): PBoolean;
     // ---------------
     property SQLType: Cardinal read FSQLType;
     property SQLSubType: Integer read FSQLSubType;
@@ -78,7 +79,7 @@ type
   private
     FMessageLength: Cardinal;
   public
-    constructor Create(AStatus: IStatus; AMetaData: IMessageMetadata); overload;
+    procedure Fill(AStatus: IStatus; AMetaData: IMessageMetadata);
     property MessageLength: Cardinal read FMessageLength;
   end;
 
@@ -125,6 +126,11 @@ begin
   Result := TFBCharSet(FCharSetID).GetCodePage;
 end;
 
+function TFbMessageMetadataItem.GetDataPtr(ABuffer: PByte): PByte;
+begin
+  Result := ABuffer + FOffset;
+end;
+
 function TFbMessageMetadataItem.GetEncoding: TEncoding;
 begin
   if not Assigned(FEncoding) then
@@ -138,10 +144,15 @@ begin
     SQL_VARYING, SQL_TEXT:
       Result := FDataLength div CharSetWidth;
     SQL_BLOB, SQL_QUAD:
-      Result := High(Integer); // 2 √б
+      Result := High(Integer);
   else
     Result := 0;
   end;
+end;
+
+function TFbMessageMetadataItem.GetNullPtr(ABuffer: PByte): PBoolean;
+begin
+  Result := PBoolean(ABuffer + FNullOffset);
 end;
 
 function TFbMessageMetadataItem.GetSQLTypeAsString: string;
@@ -231,14 +242,13 @@ end;
 
 { TFbMessageMetadata }
 
-constructor TFbMessageMetadata.Create(AStatus: IStatus;
+procedure TFbMessageMetadata.Fill(AStatus: IStatus;
   AMetaData: IMessageMetadata);
 var
   xCount: Cardinal;
   i: Cardinal;
   xItem: TFbMessageMetadataItem;
 begin
-  inherited Create(True);
   xCount := AMetaData.getCount(AStatus);
   FMessageLength := AMetaData.getMessageLength(AStatus);
   for i := 0 to xCount - 1 do
@@ -247,6 +257,5 @@ begin
     Add(xItem);
   end;
 end;
-
 
 end.

@@ -3,7 +3,73 @@
     <info>
         <title>Работа с типом BLOB</title>
     </info>
-    
-    <para>Если </para>
-</chapter>
 
+    <para>В отличие от других типов данных BLOB передаются по ссылке (идентификатор BLOB), а не по
+        значению. Это логично, BLOB могут быть огромных размеров, а потому поместить их в буфер
+        фиксированный ширины невозможно. Вместо этого в буфер сообщений помещается так называемый
+        BLOB идентификатор. а работа с данными типа BLOB осуществляются через интерфейс
+            <interfacename>IBlob</interfacename>. </para>
+    <para>Ещё одной важной особенностью типа BLOB является то, что BLOB является не изменяемым
+        типом, вы не можете изменить содержимое BLOB с заданным идентификатором, вместо этого нужно
+        создать BLOB с новым содержимым и идентификатором.</para>
+
+    <section>
+        <info>
+            <title>Чтение данных из BLOB</title>
+        </info>
+
+        <para>Для того чтобы прочитать данные из BLOB необходимо его открыть. Это можно сделать
+            вызвав метод <methodname>openBlob</methodname> интерфейса
+                <interfacename>IAttachment</interfacename>. Поскольку мы читаем BLOB из своей базы
+            данных, то будем открывать его в контексте текущего подключения. Контекст текущего
+            подключения и контекст текущей транзакции мы можем получить из контекста внешней
+            процедуры, функции или триггера (интерфейс
+                <interfacename>IExternalContext</interfacename>).</para>
+
+        <para>BLOB читается порцияи (сегментами), максимальный размер сегмента равен 32768. Чтение
+            сегмента осуществляется методом <methodname>getSegment</methodname> интерфейса
+                <interfacename>IBlob</interfacename>.</para>
+        
+        <para>Приведём пример процедуры чтения BLOB в поток:
+            <programlisting language="delphi">
+<![CDATA[  
+procedure TSplitProcedure.SaveBlobToStream(AStatus: IStatus;
+  AContext: IExternalContext; ABlobId: ISC_QUADPtr; AStream: TStream);
+var
+  att: IAttachment;
+  trx: ITransaction;
+  blob: IBlob;
+  buffer: array [0 .. 32767] of AnsiChar;
+  l: Integer;
+begin
+  try
+    att := AContext.getAttachment(AStatus);
+    trx := AContext.getTransaction(AStatus);
+    blob := att.openBlob(AStatus, trx, ABlobId, 0, nil);
+    while True do
+    begin
+      case blob.getSegment(AStatus, SizeOf(buffer), @buffer, @l) of
+        IStatus.RESULT_OK:
+          AStream.WriteBuffer(buffer, l);
+        IStatus.RESULT_SEGMENT:
+          AStream.WriteBuffer(buffer, l);
+      else
+        break;
+      end;
+    end;
+    AStream.Position := 0;
+    blob.close(AStatus);
+  finally
+    if Assigned(att) then
+      att.release;
+    if Assigned(trx) then
+      trx.release;
+    if Assigned(blob) then
+      blob.release;
+  end;
+end;
+]]>
+                </programlisting>
+        </para>
+    </section>
+</chapter>

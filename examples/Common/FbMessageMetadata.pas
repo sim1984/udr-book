@@ -4,7 +4,7 @@
 {$DEFINE WINDOWS}
 {$ENDIF}
 {$IFDEF FPC}
-{$mode delphi}
+{$MODE DELPHI}
 {$ENDIF}
 
 interface

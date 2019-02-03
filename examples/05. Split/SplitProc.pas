@@ -99,7 +99,7 @@ begin
         statusVector[0] := NativeIntPtr(isc_arg_gds);
         statusVector[1] := NativeIntPtr(isc_convert_error);
         statusVector[2] := NativeIntPtr(isc_arg_string);
-        statusVector[3] := NativeIntPtr(PAnsiChar(''));
+        statusVector[3] := NativeIntPtr(PAnsiChar('Cannot convert string to integer'));
         statusVector[4] := NativeIntPtr(isc_arg_end);
 
         AStatus.setErrors(@statusVector);

@@ -24,7 +24,7 @@ var
 function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
 begin
-  // регистрируем наши процедуры
+  // регистрируем нашу процедуру
   AUdrPlugin.registerProcedure(AStatus, 'split', TProcedureSimpleFactory<TSplitProcedure>.Create());
 
   theirUnloadFlag := AUnloadFlagLocal;

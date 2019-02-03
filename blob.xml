@@ -18,8 +18,199 @@
             <title>Чтение данных из BLOB</title>
         </info>
 
-        <para>Для того чтобы прочитать данные из BLOB необходимо его открыть. Это можно сделать
-            вызвав метод <methodname>openBlob</methodname> интерфейса
+        <para>В качестве примера чтения BLOB рассмотрим процедуру которая разбивает строку по
+            разделителю (обратная процедура для встроенной агрегатной функции LIST). Она объявлена
+            следующим образом <programlisting language="sql">
+<![CDATA[ 
+create procedure split (
+    txt blob sub_type text character set utf8,
+    delimiter char(1) character set utf8 = ','
+) returns (
+    id integer
+)
+external name 'myudr!split'
+engine udr;
+]]>
+            </programlisting>
+        </para>
+
+        <para>Зарегистрируем фабрику нашей процедуры: <programlisting language="delphi">
+<![CDATA[ 
+function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
+  AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
+begin
+  // регистрируем нашу процедуру
+  AUdrPlugin.registerProcedure(AStatus, 'split', TProcedureSimpleFactory<TSplitProcedure>.Create());
+
+  theirUnloadFlag := AUnloadFlagLocal;
+  Result := @myUnloadFlag;
+end;
+]]>
+            </programlisting>
+        </para>
+
+        <para>Здесь я применил обобщённую файбрику процедур для простых случаев, когда фабрика
+            просто создаёт экземпляр процедуры без использования метаданных. Такая фабрика объявена
+            следующим образом: <programlisting language="delphi">
+<![CDATA[ 
+...
+interface
+
+uses SysUtils, Firebird;
+
+type
+
+  TProcedureSimpleFactory<T: IExternalProcedureImpl, constructor> =
+  class(IUdrProcedureFactoryImpl)
+    procedure dispose(); override;
+
+    procedure setup(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
+      AOutBuilder: IMetadataBuilder); override;
+
+    function newItem(AStatus: IStatus; AContext: IExternalContext;
+      AMetadata: IRoutineMetadata): IExternalProcedure; override;
+  end;
+  
+...
+
+implementation
+
+{ TProcedureSimpleFactory<T> }
+
+procedure TProcedureSimpleFactory<T>.dispose;
+begin
+  Destroy;
+end;
+
+function TProcedureSimpleFactory<T>.newItem(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalProcedure;
+begin
+  Result := T.Create;
+end;
+
+procedure TProcedureSimpleFactory<T>.setup(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata; AInBuilder,
+  AOutBuilder: IMetadataBuilder);
+begin
+
+...
+]]>
+            </programlisting>
+        </para>
+
+        <para>Теперь перейдём к реализации процедуры. Снчала объявим структры для входного и
+            выходного сообщения. <programlisting language="delphi">
+<![CDATA[  
+  TInput = record
+    txt: ISC_QUAD;
+    txtNull: WordBool;
+    delimiter: array [0 .. 3] of AnsiChar;
+    delimiterNull: WordBool;
+  end;
+
+  TInputPtr = ^TInput;
+
+  TOutput = record
+    Id: Integer;
+    Null: WordBool;
+  end;
+
+  TOutputPtr = ^TOutput;
+]]>
+                </programlisting>
+        </para>
+
+        <para>Как видете вместо значения BLOB передаётся идентификатор BLOB, который описывается
+            структурой ISC_QUAD.</para>
+
+        <para>Теперь опишем класс процедуры и возвращаемого набора данных: <programlisting language="delphi">
+<![CDATA[  
+  TSplitProcedure = class(IExternalProcedureImpl)
+  private
+    procedure SaveBlobToStream(AStatus: IStatus; AContext: IExternalContext;
+      ABlobId: ISC_QUADPtr; AStream: TStream);
+    function readBlob(AStatus: IStatus; AContext: IExternalContext;
+      ABlobId: ISC_QUADPtr): string;
+  public
+    // Вызывается при уничтожении экземпляра процедуры
+    procedure dispose(); override;
+
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
+    function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
+      AOutMsg: Pointer): IExternalResultSet; override;
+  end;
+
+  TSplitResultSet = class(IExternalResultSetImpl)
+{$IFDEF FPC}
+    OutputArray: TStringArray;
+{$ELSE}
+    OutputArray: TArray<string>;
+{$ENDIF}
+    Counter: Integer;
+    Output: TOutputPtr;
+
+    procedure dispose(); override;
+    function fetch(AStatus: IStatus): Boolean; override;
+  end;
+]]>
+                </programlisting>
+        </para>
+
+        <para>Дополнительные методы <methodname>SaveBlobToStream</methodname> и
+                <methodname>readBlob</methodname> предназначены для чтения BLOB. Первая читает BLOB
+            в поток, вторая — основана на первой и выполняет преобразование прочтённого потока в
+            строку Delphi. В набор данных передаётся массив строк OutputArray и счётчик возвращённых
+            записей Counter.</para>
+
+        <para>В методе open читается BLOB и преобразуется в строку. Полученная строка разбивается по
+            разделитею с помощью встроенного метода Split из хелпера для строк. Полученный массив
+            строк передаётся в результиующий набор данных. <programlisting language="delphi">
+<![CDATA[  
+function TSplitProcedure.open(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer): IExternalResultSet;
+var
+  xInput: TInputPtr;
+  xText: string;
+  xDelimiter: string;
+begin
+  xInput := AInMsg;
+  if xInput.txtNull or xInput.delimiterNull then
+  begin
+    Result := nil;
+    Exit;
+  end;
+
+  xText := readBlob(AStatus, AContext, @xInput.txt);
+  xDelimiter := TFBCharSet.CS_UTF8.GetString(TBytes(@xInput.delimiter), 0, 4);
+  // автоматически не правильно определяется потому что строки
+  // не завершены нулём
+  // ставим кол-во байт/4
+  SetLength(xDelimiter, 1);
+
+  Result := TSplitResultSet.Create;
+  with TSplitResultSet(Result) do
+  begin
+    Output := AOutMsg;
+    OutputArray := xText.Split([xDelimiter], TStringSplitOptions.ExcludeEmpty);
+    Counter := 0;
+  end;
+end;
+]]>
+                </programlisting>
+        </para>
+
+        <note>
+            <para>Тип перечеление TFBCharSet не входит в Firebird.pas. Он написан мною для
+                облегчения работы с кодировками Firebird. В данном случае считаем что все наши
+                строки приходят в кодировке UTF-8.</para>
+        </note>
+
+        <para>Теперь опишем процедуру чтения данных из BLOB в поток. Для того чтобы прочитать данные
+            из BLOB необходимо его открыть. Это можно сделать вызвав метод
+                <methodname>openBlob</methodname> интерфейса
                 <interfacename>IAttachment</interfacename>. Поскольку мы читаем BLOB из своей базы
             данных, то будем открывать его в контексте текущего подключения. Контекст текущего
             подключения и контекст текущей транзакции мы можем получить из контекста внешней
@@ -29,9 +220,8 @@
         <para>BLOB читается порцияи (сегментами), максимальный размер сегмента равен 32768. Чтение
             сегмента осуществляется методом <methodname>getSegment</methodname> интерфейса
                 <interfacename>IBlob</interfacename>.</para>
-        
-        <para>Приведём пример процедуры чтения BLOB в поток:
-            <programlisting language="delphi">
+
+        <para><programlisting language="delphi">
 <![CDATA[  
 procedure TSplitProcedure.SaveBlobToStream(AStatus: IStatus;
   AContext: IExternalContext; ABlobId: ISC_QUADPtr; AStream: TStream);
@@ -71,5 +261,123 @@ end;
 ]]>
                 </programlisting>
         </para>
+
+        <note>
+            <para>Обратите внимание, интерфейсы <interfacename>IAttachment</interfacename>,
+                    <interfacename>ITransaction</interfacename> и
+                    <interfacename>IBlob</interfacename> наследуют интерфейс
+                    <interfacename>IReferenceCounted</interfacename>, а значит это объекты с
+                подсчётом ссылок. Методы возвращающие объекты этих интерфейсов устанавливают счётчик
+                ссылок в 1. По завершению работы с такими объектами нужно уменьшить счётчик ссылок с
+                помощью метода <methodname>release</methodname>.</para>
+        </note>
+
+        <para>На основе метода <methodname>SaveBlobToStream</methodname> написана процедура чтения
+            BLOB в строку: <programlisting language="delphi">            
+<![CDATA[  
+function TSplitProcedure.readBlob(AStatus: IStatus; AContext: IExternalContext;
+  ABlobId: ISC_QUADPtr): string;
+var
+{$IFDEF FPC}
+  xStream: TBytesStream;
+{$ELSE}
+  xStream: TStringStream;
+{$ENDIF}
+begin
+{$IFDEF FPC}
+  xStream := TBytesStream.Create(nil);
+{$ELSE}
+  xStream := TStringStream.Create('', 65001);
+{$ENDIF}
+  try
+    SaveBlobToStream(AStatus, AContext, ABlobId, xStream);
+{$IFDEF FPC}
+    Result := TEncoding.UTF8.GetString(xStream.Bytes, 0, xStream.Size);
+{$ELSE}
+    Result := xStream.DataString;
+{$ENDIF}
+  finally
+    xStream.Free;
+  end;
+end;
+]]>
+</programlisting>
+        </para>
+
+        <note>
+            <para>К сожалению Free Pascal не обеспечивает полную обратную совместимость с Delphi для
+                класса <classname>TStringStream</classname>. В версии для FPC нельзя указать
+                кодировку с которой будет работать поток, а потому приходится обрабатывать для него
+                преобразоване в строку особым образом.</para>
+        </note>
+
+        <para>Метод <methodname>fetch</methodname> выходного набора данных извлекает из массива
+            строк элемент с индексом Counter и увеличивает его до тех пор, пока не будет извлечён
+            последний элемент массива. Каждая извлечённая строка преобразуется к целому. Если это
+            невозможно сделать то будет возбуждено исключение с кодом
+                <literal>isc_convert_error</literal>. <programlisting language="delphi">            
+<![CDATA[  
+procedure TSplitResultSet.dispose;
+begin
+  SetLength(OutputArray, 0);
+  Destroy;
+end;
+
+function TSplitResultSet.fetch(AStatus: IStatus): Boolean;
+var
+  statusVector: array [0 .. 4] of NativeIntPtr;
+begin
+  if Counter <= High(OutputArray) then
+  begin
+    Output.Null := False;
+    // исключение будут перехвачены в любом случае с кодом isc_random
+    // здесь же мы будем выбрасывать стандартную для Firebird
+    // ошибку isc_convert_error
+    try
+      Output.Id := OutputArray[Counter].ToInteger();
+    except
+      on e: EConvertError do
+      begin
+
+        statusVector[0] := NativeIntPtr(isc_arg_gds);
+        statusVector[1] := NativeIntPtr(isc_convert_error);
+        statusVector[2] := NativeIntPtr(isc_arg_string);
+        statusVector[3] := NativeIntPtr(PAnsiChar('Cannot convert string to integer'));
+        statusVector[4] := NativeIntPtr(isc_arg_end);
+
+        AStatus.setErrors(@statusVector);
+      end;
+    end;
+    inc(Counter);
+    Result := True;
+  end
+  else
+    Result := False;
+end;
+]]>
+</programlisting>
+        </para>
+
+        <note>
+            <para>На самом деле обработка любых ошибок кроме isc_random не чень удобна, для
+                упрощения можно написать свою обёртку.</para>
+        </note>
+
+        <para>Работоспособность процедуры можно проверисть слеющим образом: <programlisting language="sql">            
+<![CDATA[  
+SELECT ids.ID
+FROM SPLIT((SELECT LIST(ID) FROM MYTABLE), ',') ids
+]]>
+</programlisting>
+        </para>
+
+        <note>
+            <para>Главным недостатком такой реализации состоит в том, что BLOB будет всегда прочитан
+                целиком, даже если вы хотите досрочно прервать извлечение записей из процедуры. При
+                желании вы можете изменить код процедуры таким образом, чтобы разбиение на подстроки
+                осуществляось более маленькими порциями. Для этого чтение этих порций необходимо
+                осуществлять в методе <methodname>fetch</methodname> по мере извлечения строк
+                результата.</para>
+        </note>
     </section>
 </chapter>

@@ -3,7 +3,7 @@
         <ProjectGuid>{77F2F99E-B8E4-4CBF-940E-CA30BF407DF9}</ProjectGuid>
         <ProjectVersion>18.2</ProjectVersion>
         <FrameworkType>None</FrameworkType>
-        <MainSource>MyUdr.dpr</MainSource>
+        <MainSource>BlobFileUtils.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
@@ -45,7 +45,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <SanitizedProjectName>MyUdr</SanitizedProjectName>
+        <SanitizedProjectName>BlobFileUtils</SanitizedProjectName>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <GenDll>true</GenDll>
         <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
@@ -96,12 +96,10 @@
         </DelphiCompile>
         <DCCReference Include="..\Common\Firebird.pas"/>
         <DCCReference Include="..\Common\FbTypes.pas"/>
-        <DCCReference Include="..\Common\FbCharsets.pas"/>
-        <DCCReference Include="..\Common\FbBlob.pas"/>
-        <DCCReference Include="..\Common\FbMessageMetadata.pas"/>
-        <DCCReference Include="..\Common\UdrFactories.pas"/>
         <DCCReference Include="UdrInit.pas"/>
-        <DCCReference Include="SplitProc.pas"/>
+        <DCCReference Include="SaveBlobToFile.pas"/>
+        <DCCReference Include="LoadBlobFromFile.pas"/>
+        <None Include="BlobFileUtils.sql"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
@@ -120,7 +118,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">MyUdr.dpr</Source>
+                    <Source Name="MainSource">BlobFileUtils.dpr</Source>
                 </Source>
             </Delphi.Personality>
             <Deployment Version="3">
@@ -129,7 +127,13 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win32\Debug\MyUdr.dll" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="Win64\Release\MyUdr.dll" Configuration="Release" Class="ProjectOutput"/>
+                <DeployFile LocalName="Win64\Release\BlobFileUtils.dll" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="Win64">
+                        <RemoteName>BlobFileUtils.dll</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="$(BDS)\Redist\iossimulator\libPCRE.dylib" Class="DependencyModule">
                     <Platform Name="iOSSimulator">
                         <Overwrite>true</Overwrite>
@@ -140,12 +144,12 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win64\Release\MyUdr.dll" Configuration="Release" Class="ProjectOutput"/>
                 <DeployFile LocalName="$(BDS)\Redist\osx32\libcgsqlite3.dylib" Class="DependencyModule">
                     <Platform Name="OSX32">
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="Win32\Debug\MyUdr.dll" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="iOSSimulator">
                         <Operation>1</Operation>

@@ -11,7 +11,7 @@
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <Title Value="MyUdr"/>
+      <Title Value="BlobSplit"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -29,7 +29,7 @@
     </RunParams>
     <Units Count="7">
       <Unit0>
-        <Filename Value="MyUdr.lpr"/>
+        <Filename Value="BlobSplit.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
@@ -53,7 +53,7 @@
         <IsPartOfProject Value="True"/>
       </Unit5>
       <Unit6>
-        <Filename Value="..\Common\fbcharsets.pas"/>
+        <Filename Value="..\Common\FbCharsets.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="FbCharsets"/>
       </Unit6>
@@ -63,7 +63,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="MyUdr"/>
+      <Filename Value="BlobSplit"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>

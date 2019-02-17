@@ -19,7 +19,7 @@ type
     ) returns (
         id integer
     )
-    external name 'myudr!split'
+    external name 'BlobSplit!split'
     engine udr;
 
     ********************************************************* }

@@ -8,11 +8,10 @@ uses
   {$IFDEF unix}
   cthreads,
   {$ENDIF }
-  Firebird in '../Common/Firebird.pas',
-  FbTypes in '../Common/FbTypes.pas',
-  UdrFactories in '../Common/UdrFactories.pas',
+  Firebird in '..\Common\Firebird.pas',
   UdrInit in 'UdrInit.pas',
-  SplitProc in 'SplitProc.pas', FbCharsets;
+  SaveBlobToFile in 'SaveBlobToFile.pas',
+  LoadBlobFromFile in 'LoadBlobFromFile.pas';
 
 exports firebird_udr_plugin;
 

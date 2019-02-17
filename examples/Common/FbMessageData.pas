@@ -391,7 +391,7 @@ begin
       begin
         Result := xMetadataItem.Encoding.getString(TBytes(@FBuffer),
           xMetadataItem.Offset, xMetadataItem.DataLength);
-        SetLength(Result, xMetadataItem.MaxCharLength);
+        SetLength(Result, xMetadataItem.DataLength);
       end;
   end;
 end;
@@ -715,7 +715,6 @@ end;
 procedure TFbMessageData.setString(AIndex: Cardinal; const AValue: string);
 var
   xMetadataItem: TFbMessageMetadataItem;
-  xCharLength: Smallint;
   xBytes: TBytes;
   xBuffer: PByte;
 begin
@@ -751,10 +750,10 @@ begin
 
     SQL_VARYING:
       begin
-        if (Length(AValue) > xMetadataItem.MaxCharLength) then
+        if (Length(AValue) > xMetadataItem.DataLength) then
           raise Exception.CreateFmt
             ('String trancation, expected char length %d, actual %d',
-            [xMetadataItem.MaxCharLength, Length(AValue)]);
+            [xMetadataItem.DataLength, Length(AValue)]);
 
         xBytes := xMetadataItem.Encoding.GetBytes(AValue);
         PSmallint(FBuffer + xMetadataItem.Offset)^ := Length(AValue);
@@ -770,10 +769,10 @@ begin
 
     SQL_TEXT:
       begin
-        if (Length(AValue) > xMetadataItem.MaxCharLength) then
+        if (Length(AValue) > xMetadataItem.DataLength) then
           raise Exception.CreateFmt
             ('String trancation, expected length %d, actual %d',
-            [xMetadataItem.MaxCharLength, Length(AValue)]);
+            [xMetadataItem.DataLength, Length(AValue)]);
 
         xBytes := xMetadataItem.Encoding.GetBytes(AValue);
 

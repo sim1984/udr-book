@@ -1,7 +1,7 @@
-library MyUdr;
+library PlanUtils;
 
 {$IFDEF FPC}
-  {$MODE DELPHI}{$H+}
+  {$MODE objfpc}{$H+}
 {$ENDIF}
 
 uses
@@ -9,11 +9,13 @@ uses
   cthreads,
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
+  UdrFactories in '..\Common\UdrFactories.pas',
+  FbBlob in '..\Common\FbBlob.pas',
   UdrInit in 'UdrInit.pas',
-  SaveBlobToFile in 'SaveBlobToFile.pas',
-  LoadBlobFromFile in 'LoadBlobFromFile.pas';
+  ExplainPlanFunc in 'ExplainPlanFunc.pas';
 
 exports firebird_udr_plugin;
 
 end.
+
 

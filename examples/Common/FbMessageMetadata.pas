@@ -46,11 +46,13 @@ type
     function GetEncoding: TEncoding;
     function GetSQLTypeAsString: string;
   public
-    constructor Create(AStatus: IStatus; AMetaData: IMessageMetadata;
-      AIndex: Cardinal);
-    // ---------------
+    constructor Create;
+    // -- data
     function GetDataPtr(ABuffer: PByte): PByte;
-    function GetNullPtr(ABuffer: PByte): PBoolean;
+    // -- null
+    function GetNullPtr(ABuffer: PByte): PWordBool;
+    function IsNull(ABuffer: PByte): Boolean;
+    procedure SetNull(ABuffer: PByte; ANullFlag: Boolean);
     // ---------------
     property SQLType: Cardinal read FSQLType;
     property SQLSubType: Integer read FSQLSubType;
@@ -69,8 +71,8 @@ type
     property CharSetName: AnsiString read GetCharSetName;
     property CharSetWidth: Word read GetCharSetWidth;
     property CodePage: Integer read GetCodePage;
-    property MaxCharLength: Integer read GetMaxCharLength;
     property Encoding: TEncoding read GetEncoding;
+    property MaxCharLength: Integer read GetMaxCharLength;
     property SQLTypeAsString: string read GetSQLTypeAsString;
   end;
 
@@ -87,28 +89,14 @@ implementation
 
 uses FbCharsets;
 
-  { TFbMessageMetadataItem }
+{ TFbMessageMetadataItem }
 
-constructor TFbMessageMetadataItem.Create(AStatus: IStatus;
-  AMetaData: IMessageMetadata; AIndex: Cardinal);
+constructor TFbMessageMetadataItem.Create;
 begin
-  FIndex := AIndex;
   SetLength(FRelationName, MAX_IDENTIFIER_LENGTH);
   SetLength(FFieldName, MAX_IDENTIFIER_LENGTH);
   SetLength(FOwnerName, MAX_IDENTIFIER_LENGTH);
   SetLength(FAliasName, MAX_IDENTIFIER_LENGTH);
-  FRelationName := AMetaData.getRelation(AStatus, AIndex);
-  FFieldName := AMetaData.getField(AStatus, AIndex);
-  FOwnerName := AMetaData.getOwner(AStatus, AIndex);
-  FAliasName := AMetaData.getAlias(AStatus, AIndex);
-  FSQLType := AMetaData.getType(AStatus, AIndex);
-  FNullable := AMetaData.isNullable(AStatus, AIndex);
-  FSQLSubType := AMetaData.getSubType(AStatus, AIndex);
-  FDataLength := AMetaData.getLength(AStatus, AIndex);
-  FScale := AMetaData.getScale(AStatus, AIndex);
-  FCharSetID := AMetaData.getCharSet(AStatus, AIndex);
-  FOffset := AMetaData.getOffset(AStatus, AIndex);
-  FNullOffset := AMetaData.getNullOffset(AStatus, AIndex);
 end;
 
 function TFbMessageMetadataItem.GetCharSetName: AnsiString;
@@ -150,53 +138,53 @@ begin
   end;
 end;
 
-function TFbMessageMetadataItem.GetNullPtr(ABuffer: PByte): PBoolean;
+function TFbMessageMetadataItem.GetNullPtr(ABuffer: PByte): PWordBool;
 begin
-  Result := PBoolean(ABuffer + FNullOffset);
+  Result := PWordBool(ABuffer + FNullOffset);
 end;
 
 function TFbMessageMetadataItem.GetSQLTypeAsString: string;
 begin
   case TFBType(FSQLType) of
     SQL_BOOLEAN:
-    begin
-      Result := 'BOOLEAN';
-    end;
+      begin
+        Result := 'BOOLEAN';
+      end;
 
     SQL_SHORT:
-    begin
-      // учесть масштаб
-      Result := 'SMALLINT';
-    end;
+      begin
+        // учесть масштаб
+        Result := 'SMALLINT';
+      end;
 
     SQL_LONG:
-    begin
-      // учесть масштаб
-      Result := 'INTEGER';
-    end;
+      begin
+        // учесть масштаб
+        Result := 'INTEGER';
+      end;
 
     SQL_INT64:
-    begin
-      // в 3-м диалекте учитывается масштаб
-      if Scale = 0 then
-        Result := 'BIGINT'
-      else
-        Result := 'NUMERIC(18, ' + Abs(Scale).ToString() + ')';
-    end;
+      begin
+        // в 3-м диалекте учитывается масштаб
+        if Scale = 0 then
+          Result := 'BIGINT'
+        else
+          Result := 'NUMERIC(18, ' + Abs(Scale).ToString() + ')';
+      end;
 
     SQL_FLOAT:
-    begin
-      Result := 'FLOAT';
-    end;
+      begin
+        Result := 'FLOAT';
+      end;
 
     SQL_DOUBLE, SQL_D_FLOAT:
-    begin
-      // в 1-м диалекте учитывается масштаб
-      if Scale = 0 then
-        Result := 'DOUBLE PRECISION'
-      else
-        Result := 'NUMERIC(15, ' + Abs(Scale).ToString() + ')';
-    end;
+      begin
+        // в 1-м диалекте учитывается масштаб
+        if Scale = 0 then
+          Result := 'DOUBLE PRECISION'
+        else
+          Result := 'NUMERIC(15, ' + Abs(Scale).ToString() + ')';
+      end;
 
     SQL_DATE:
       Result := 'DATE';
@@ -208,37 +196,47 @@ begin
       Result := 'TIMESTAMP';
 
     SQL_TEXT:
-    begin
-      Result := 'CHAR(' + MaxCharLength.ToString() + ')';
-      if CharSetID <> 0 then
-        Result := Result + ' CHARACTER SET ' + GetCharSetName();
-    end;
+      begin
+        Result := 'CHAR(' + MaxCharLength.ToString() + ')';
+        if CharsetID <> 0 then
+          Result := Result + ' CHARACTER SET ' + GetCharSetName();
+      end;
 
     SQL_VARYING:
-    begin
-      Result := 'VARCHAR(' + MaxCharLength.ToString() + ')';
-      if CharSetID <> 0 then
-        Result := Result + ' CHARACTER SET ' + GetCharSetName();
-    end;
+      begin
+        Result := 'VARCHAR(' + MaxCharLength.ToString() + ')';
+        if CharsetID <> 0 then
+          Result := Result + ' CHARACTER SET ' + GetCharSetName();
+      end;
 
     SQL_BLOB, SQL_QUAD:
-    begin
-      Result := 'BLOB';
-      case SqlSubType of
-        0: Result := Result + ' SUB_TYPE BINARY';
-        1:
-        begin
-          Result := Result + ' SUB_TYPE TEXT';
-          if CharSetID <> 0 then
-            Result := Result + ' CHARACTER SET ' + GetCharSetName();
-        end
+      begin
+        Result := 'BLOB';
+        case SQLSubType of
+          0:
+            Result := Result + ' SUB_TYPE BINARY';
+          1:
+            begin
+              Result := Result + ' SUB_TYPE TEXT';
+              if CharsetID <> 0 then
+                Result := Result + ' CHARACTER SET ' + GetCharSetName();
+            end
         else
-          Result := Result + ' SUB_TYPE ' + SqlSubType.ToString();
+          Result := Result + ' SUB_TYPE ' + SQLSubType.ToString();
+        end;
       end;
-    end;
   end;
 end;
 
+function TFbMessageMetadataItem.IsNull(ABuffer: PByte): Boolean;
+begin
+  Result := GetNullPtr(ABuffer)^;
+end;
+
+procedure TFbMessageMetadataItem.SetNull(ABuffer: PByte; ANullFlag: Boolean);
+begin
+  GetNullPtr(ABuffer)^ := ANullFlag;
+end;
 
 { TFbMessageMetadata }
 
@@ -253,7 +251,20 @@ begin
   FMessageLength := AMetaData.getMessageLength(AStatus);
   for i := 0 to xCount - 1 do
   begin
-    xItem := TFbMessageMetadataItem.Create(AStatus, AMetaData, i);
+    xItem := TFbMessageMetadataItem.Create;
+    xItem.FIndex := i;
+    xItem.FRelationName := AMetaData.getRelation(AStatus, i);
+    xItem.FFieldName := AMetaData.getField(AStatus, i);
+    xItem.FOwnerName := AMetaData.getOwner(AStatus, i);
+    xItem.FAliasName := AMetaData.getAlias(AStatus, i);
+    xItem.FSQLType := AMetaData.getType(AStatus, i);
+    xItem.FNullable := AMetaData.isNullable(AStatus, i);
+    xItem.FSQLSubType := AMetaData.getSubType(AStatus, i);
+    xItem.FDataLength := AMetaData.getLength(AStatus, i);
+    xItem.FScale := AMetaData.getScale(AStatus, i);
+    xItem.FCharSetID := AMetaData.getCharSet(AStatus, i);
+    xItem.FOffset := AMetaData.getOffset(AStatus, i);
+    xItem.FNullOffset := AMetaData.getNullOffset(AStatus, i);
     Add(xItem);
   end;
 end;

@@ -1,4 +1,4 @@
-library MyUdr;
+library BlobSplit;
 
 {$IFDEF FPC}
 {$MODE DELPHI}{$H+}
@@ -11,8 +11,6 @@ uses
   Firebird in '..\Common\Firebird.pas',
   FbTypes in '..\Common\FbTypes.pas',
   FbCharsets in '..\Common\FbCharsets.pas',
-  FbBlob in '..\Common\FbBlob.pas',
-  FbMessageMetadata in '..\Common\FbMessageMetadata.pas',
   UdrFactories in '..\Common\UdrFactories.pas',
   UdrInit in 'UdrInit.pas',
   SplitProc in 'SplitProc.pas';

@@ -109,18 +109,18 @@ end;
 
 procedure TFbBlobHelper.LoadFromStream(AStatus: IStatus; AStream: TStream);
 var
-  xCount: Integer;
-  xLocalLength: Integer;
-  xBuffer: array [0 .. 32767] of Byte;
+  xStreamSize: Integer;
+  xReadLength: Integer;
+  xBuffer: array [0 .. MAX_SEGMENT_SIZE] of Byte;
 begin
+  xStreamSize := AStream.Size;
   AStream.Position := 0;
-  xCount := AStream.Size;
-  while xCount >= 0 do
+  while xStreamSize <> 0 do
   begin
-    xLocalLength := AStream.Read(xBuffer, MAX_SEGMENT_SIZE);
-    Self.putSegment(AStatus, xLocalLength, @xBuffer[0]);
-    FBException.checkException(AStatus);
-    Dec(xCount, xLocalLength);
+    xReadLength := Min(xStreamSize, MAX_SEGMENT_SIZE);
+    AStream.ReadBuffer(xBuffer, xReadLength);
+    Self.putSegment(AStatus, xReadLength, @xBuffer[0]);
+    Dec(xStreamSize, xReadLength);
   end;
 end;
 
@@ -144,25 +144,20 @@ begin
     Dec(Count, xBytesRead);
   until ((xRetutnCode <> IStatus.RESULT_OK) and
     (xRetutnCode <> IStatus.RESULT_SEGMENT)) or (Count = 0);
-  if (xRetutnCode <> IStatus.RESULT_OK) and
-    (xRetutnCode <> IStatus.RESULT_SEGMENT) and
-    (xRetutnCode <> IStatus.RESULT_NO_DATA) then
-    FBException.checkException(AStatus);
 end;
 
 procedure TFbBlobHelper.SaveToStream(AStatus: IStatus; AStream: TStream);
 var
   xInfo: TFbBlobInfo;
-  Buffer: array [0 .. 32767] of Byte;
+  Buffer: array [0 .. MAX_SEGMENT_SIZE] of Byte;
   xBytesRead: Cardinal;
+  xBufferSize: Cardinal;
 begin
-  Self.GetBlobInfo(AStatus, xInfo.NumSegments, xInfo.MaxSegmentSize,
-    xInfo.TotalLength, xInfo.BlobType);
-  AStream.Size := xInfo.TotalLength;
   AStream.Position := 0;
+  xBufferSize := Min(SizeOf(Buffer), MAX_SEGMENT_SIZE);
   while True do
   begin
-    case Self.getSegment(AStatus, Sizeof(Buffer), @Buffer, @xBytesRead) of
+    case Self.getSegment(AStatus, xBufferSize, @Buffer[0], @xBytesRead) of
       IStatus.RESULT_OK:
         AStream.WriteBuffer(Buffer, xBytesRead);
       IStatus.RESULT_SEGMENT:
@@ -187,11 +182,10 @@ begin
   repeat
     xLocalLength := Min(Count, MAX_SEGMENT_SIZE);
     Self.putSegment(AStatus, xLocalLength, xLocalBuffer);
-    FBException.checkException(AStatus);
     Inc(xLocalBuffer, xLocalLength);
     Inc(Result, xLocalLength);
     Dec(Count, xLocalLength);
-  until Count = 0;
+  until Count <= 0;
 end;
 
 end.

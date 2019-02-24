@@ -22,7 +22,17 @@ type
     function Write(AStatus: IStatus; const Buffer; Count: Longint): Longint;
     procedure GetBlobInfo(AStatus: IStatus; var NumSegments, MaxSegmentSize,
       TotalSize: Longint; var BlobType: Smallint);
+    { Загружает в BLOB содержимое потока
+
+      @param(AStatus Статус вектор)
+      @param(AStream Поток)
+    }
     procedure LoadFromStream(AStatus: IStatus; AStream: TStream);
+    { Загружает в поток содержимое BLOB
+
+      @param(AStatus Статус вектор)
+      @param(AStream Поток)
+    }
     procedure SaveToStream(AStatus: IStatus; AStream: TStream);
   end;
 
@@ -148,7 +158,6 @@ end;
 
 procedure TFbBlobHelper.SaveToStream(AStatus: IStatus; AStream: TStream);
 var
-  xInfo: TFbBlobInfo;
   Buffer: array [0 .. MAX_SEGMENT_SIZE] of Byte;
   xBytesRead: Cardinal;
   xBufferSize: Cardinal;

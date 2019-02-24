@@ -105,7 +105,7 @@ begin
             </programlisting>
     </para>
 
-    <para>Теперь перейдём к реализации процедуры. Снчала объявим структры для входного и выходного
+    <para>Теперь перейдём к реализации процедуры. Сначала объявим структры для входного и выходного
       сообщения. <programlisting language="delphi">
 <![CDATA[  
   TInput = record
@@ -575,5 +575,143 @@ end;
       тех пор, пока данные в потоке файла не закончаться. По завершению запис данных в блоб
       необходимо закрыть его с помощью метода <methodname>close</methodname>.</para>
 
+  </section>
+
+  <section>
+    <title>Хелпер для работы с типом BLOB</title>
+
+    <para>В выше описанных примерах мы использовали сохранение содержимого BLOB в поток, а также
+      загрузку содержимого BLOB в поток. Это довольно частая операция при работе с типом BLOB,
+      поэтому было бы хорошо написать специальный набор утилит для повторного использования
+      кода.</para>
+
+    <para>Современные версии Delphi и Free Pascal позволяют расширять существующие классы и типы без
+      наследования с помощью так называемых хэлперов. Добавим методы в интерфейс
+        <interfacename>IBlob</interfacename> для сохранения и загрузки содержимого потока из/в
+      Blob.</para>
+
+    <para>Создадим специальный модуль FbBlob, где будет размещён наш хэлпер. <programlisting language="delphi">
+<![CDATA[
+unit FbBlob;
+
+interface
+
+uses Classes, SysUtils, Firebird;
+
+const
+  MAX_SEGMENT_SIZE = $7FFF;
+
+type
+  TFbBlobHelper = class helper for IBlob
+    { Загружает в BLOB содержимое потока
+
+      @param(AStatus Статус вектор)
+      @param(AStream Поток)
+    }
+    procedure LoadFromStream(AStatus: IStatus; AStream: TStream);
+    { Загружает в поток содержимое BLOB
+
+      @param(AStatus Статус вектор)
+      @param(AStream Поток)
+    }
+    procedure SaveToStream(AStatus: IStatus; AStream: TStream);
+  end;
+  
+implementation
+
+uses Math;
+
+procedure TFbBlobHelper.LoadFromStream(AStatus: IStatus; AStream: TStream);
+var
+  xStreamSize: Integer;
+  xReadLength: Integer;
+  xBuffer: array [0 .. MAX_SEGMENT_SIZE] of Byte;
+begin
+  xStreamSize := AStream.Size;
+  AStream.Position := 0;
+  while xStreamSize <> 0 do
+  begin
+    xReadLength := Min(xStreamSize, MAX_SEGMENT_SIZE);
+    AStream.ReadBuffer(xBuffer, xReadLength);
+    Self.putSegment(AStatus, xReadLength, @xBuffer[0]);
+    Dec(xStreamSize, xReadLength);
+  end;
+end;
+
+procedure TFbBlobHelper.SaveToStream(AStatus: IStatus; AStream: TStream);
+var
+  xInfo: TFbBlobInfo;
+  Buffer: array [0 .. MAX_SEGMENT_SIZE] of Byte;
+  xBytesRead: Cardinal;
+  xBufferSize: Cardinal;
+begin
+  AStream.Position := 0;
+  xBufferSize := Min(SizeOf(Buffer), MAX_SEGMENT_SIZE);
+  while True do
+  begin
+    case Self.getSegment(AStatus, xBufferSize, @Buffer[0], @xBytesRead) of
+      IStatus.RESULT_OK:
+        AStream.WriteBuffer(Buffer, xBytesRead);
+      IStatus.RESULT_SEGMENT:
+        AStream.WriteBuffer(Buffer, xBytesRead);
+    else
+      break;
+    end;
+  end;
+end;
+
+end.
+]]>      
+    </programlisting>
+    </para>
+    <para> Теперь вы можете значительно упростить операции с типом BLOB, например вышепривёднная
+      функция сохранения BLOB в файл может быть переписана так: <programlisting language="delphi">
+<![CDATA[ 
+procedure TLoadBlobFromFileFunc.execute(AStatus: IStatus;
+  AContext: IExternalContext; AInMsg: Pointer; AOutMsg: Pointer);
+var
+  xInput: TInputPtr;
+  xOutput: TOutputPtr;
+  xFileName: string;
+  xStream: TFileStream;
+  att: IAttachment;
+  trx: ITransaction;
+  blob: IBlob;
+begin
+  xInput := AInMsg;
+  xOutput := AOutMsg;
+  if xInput.filenameNull then
+  begin
+    xOutput.blobDataNull := True;
+    Exit;
+  end;
+  xOutput.blobDataNull := False;
+  // получаем имя файла
+  xFileName := TEncoding.UTF8.GetString(TBytes(@xInput.filename.str), 0,
+    xInput.filename.len * 4);
+  SetLength(xFileName, xInput.filename.len);
+  // читаем файл в поток
+  xStream := TFileStream.Create(xFileName, fmOpenRead or fmShareDenyNone);
+  att := AContext.getAttachment(AStatus);
+  trx := AContext.getTransaction(AStatus);
+  blob := nil;
+  try
+    // создаём новый blob  
+    blob := att.createBlob(AStatus, trx, @xOutput.blobData, 0, nil);
+    // загружаем содержимое потока в BLOB
+    blob.LoadFromStream(AStatus, xStream);    
+    // закрываем BLOB
+    blob.close(AStatus);
+  finally
+    if Assigned(blob) then
+      blob.release;
+    att.release;
+    trx.release;
+    xStream.Free;
+  end;
+end;
+]]>
+            </programlisting>
+    </para>
   </section>
 </chapter>

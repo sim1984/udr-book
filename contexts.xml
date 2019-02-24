@@ -1,11 +1,251 @@
 <!DOCTYPE chapter>
 <chapter xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="udr-contexts" xml:lang="ru">
-    <info>
-        <title>Контекст соединения и транзакции</title>
-    </info>
+  <info>
+    <title>Контекст соединения и транзакции</title>
+  </info>
 
-    <para>Если ваша внешняя процедура, функция или триггер должна получать данные из собственной
-        базы данных не через входные аргументы, а например через запрос, то вам поребуется получать
-        контекст текущего соединения и/или транзакции. Кроме того, контекст соединения и транзакции
-        необходим если вы будете работать с типом BLOB.</para>
+  <para>Если ваша внешняя процедура, функция или триггер должна получать данные из собственной базы
+    данных не через входные аргументы, а например через запрос, то вам поребуется получать контекст
+    текущего соединения и/или транзакции. Кроме того, контекст соединения и транзакции необходим
+    если вы будете работать с типом BLOB.</para>
+  <para>Контекст выполнения текущей процедуры, функции или триггера передаётся в качестве параметра
+    с типом <interfacename>IExternalContext</interfacename> в метод <methodname>execute</methodname>
+    триггера или функции, или в метод <methodname>open</methodname> процедуры. Интерфейс
+      <interfacename>IExternalContext</interfacename> позволяет получить текущее соединение с
+    помощью метода <methodname>getAttachment</methodname>, и текущую транзакцию с помощью метода
+      <methodname>getTransaction</methodname>. Это даёт боьшую гибкость вашим UDR, например вы
+    можете выполнять запросы к текущей базе данных с сохранением текущего сессионого окружения, в
+    той же транзакции или в новой транзакции, созданной с помощью метода
+      <methodname>startTransaction</methodname> интерфейса
+      <interfacename>IExternalContext</interfacename>. В последнем случае запрос будет выполнен так
+    как будето он выполняется в автономной транзакции. Кроме того, вы можете выполнить запрос к
+    внешней базе данных с ипользованием транзакции присоединённой к текущей транзакции, т.е.
+    транзакции с двухфазным подтверждением (2PC).</para>
+  <para>В качестве примера работы с контекстом выполнения функции напишем функцю которая будет
+    сериализовать результат выполения SELECT запроса в формате JSON. Она объявлена следующим
+    образом: <programlisting language="sql">
+<![CDATA[ 
+create function GetJson (
+    sql_text blob sub_type text character set utf8,
+    sql_dialect smallint not null default 3
+) returns returns blob sub_type text character set utf8
+external name 'JsonUtils!getJson'
+engine udr;
+]]>
+            </programlisting>
+  </para>
+  <para>Поскольку мы позволяем выполнять произвольный SQL запрос, то мы не знаем заранее формат
+    выходных полей, и мы не сможем использовать структуру с фисированными полями. В этом случае нам
+    придётся работать с интерфейсом <interfacename>IMessageMetadata</interfacename>. Вы уже
+    сталкивались с ним ранее, но на этот раз придётся работать с ним более основательно, поскольку
+    мы должны обрабатывать все существующи типы Firebird.</para>
+  <note>
+    <para>В JSON можно закодировать практически любые типы данных кроме бинарных. Для кодирования
+      типов CHAR, VARCHAR с OCTETS NONE и BLOB SUB_TYPE BINARY будем кодировать бинарное содержимое
+      с помощью кодирования base64, которое уже можно размещать в JSON.</para>
+  </note>
+  <para>Зарегистрируем фабрику нашей функции: <programlisting language="delphi">
+<![CDATA[ 
+function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
+  AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
+begin
+  // регистрируем функцию
+  AUdrPlugin.registerFunction(AStatus, 'getJson', TFunctionSimpleFactory<TJsonFunction>.Create());
+
+  theirUnloadFlag := AUnloadFlagLocal;
+  Result := @myUnloadFlag;
+end;
+]]>
+            </programlisting>
+  </para>
+
+  <para>Теперь объявим структуры для входного и выходного сообщения, а так же интерфейсную часть
+    нашей функции: <programlisting language="delphi">
+<![CDATA[ 
+unit JsonFunc;
+
+{$IFDEF FPC}
+{$MODE objfpc}{$H+}
+{$DEFINE DEBUGFPC}
+{$ENDIF}
+
+interface
+
+uses
+  Firebird,
+  UdrFactories,
+  FbTypes,
+  FbCharsets,
+  SysUtils,
+  System.NetEncoding,
+  System.Json;
+
+// *********************************************************
+// create function GetJson (
+//   sql_text blob sub_type text,
+//   sql_dialect smallint not null default 3
+// ) returns blob sub_type text character set utf8
+// external name 'JsonUtils!getJson'
+// engine udr;
+// *********************************************************
+
+type
+
+  TInput = record
+    SqlText: ISC_QUAD;
+    SqlNull: WordBool;
+    SqlDialect: Smallint;
+    SqlDialectNull: WordBool;
+  end;
+
+  InputPtr = ^TInput;
+
+  TOutput = record
+    Json: ISC_QUAD;
+    NullFlag: WordBool;
+  end;
+
+  OutputPtr = ^TOutput;
+
+  // Внешняя функция TSumArgsFunction.
+  TJsonFunction = class(IExternalFunctionImpl)
+  private
+    FFormatSettings: TFormatSettings;
+  public
+    procedure dispose(); override;
+
+    procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
+      AName: PAnsiChar; ANameSize: Cardinal); override;
+
+    { Преобразует целое в строку в соответсвии с масштабом
+
+      @param(AValue Значение)
+      @param(Scale Масштаб)
+      @returns(Строковое представление масштабированного целого)
+    }
+    function MakeScaleInteger(AValue: Int64; Scale: Smallint): string;
+
+    { Добавляет закодированную запись в массив объектов Json
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AJson Массив объектов Json)
+      @param(ABuffer Буфер записи)
+      @param(AMeta Метаданые курсора)
+    }
+    procedure writeJson(AStatus: IStatus; AContext: IExternalContext;
+      AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata);
+
+    { Выполнение внешней функции
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AInMsg Указатель на входное сообщение)
+      @param(AOutMsg Указатель на выходное сообщение)
+    }
+    procedure execute(AStatus: IStatus; AContext: IExternalContext;
+      AInMsg: Pointer; AOutMsg: Pointer); override;
+  end;
+]]>
+            </programlisting>
+  </para>
+  <para>Дополнительный метод <methodname>MakeScaleInteger</methodname> предназначен для
+    преоьразование масштабируемых чисел в строку, метод <methodname>writeJson</methodname> кодирует
+    очередную запись выбранную из курсора в Json объект и добавляет его в массив таких объектов. Эти
+    методы мы опишем позже, а пока приведём основной метод <methodname>execute</methodname> для
+    выполнения внешней функции.
+  <programlisting language="delphi">
+<![CDATA[
+procedure TJsonFunction.execute(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer);
+var
+  xInput: InputPtr;
+  xOutput: OutputPtr;
+  att: IAttachment;
+  tra: ITransaction;
+  stmt: IStatement;
+  inBlob, outBlob: IBlob;
+  inStream: TBytesStream;
+  outStream: TStringStream;
+  cursorMetaData: IMessageMetadata;
+  rs: IResultSet;
+  msgLen: Cardinal;
+  msg: Pointer;
+  jsonArray: TJsonArray;
+begin
+  xInput := AInMsg;
+  xOutput := AOutMsg;
+  // если один из входных аргументов NULL, то и результат NULL
+  if xInput.SqlNull or xInput.SqlDialectNull then
+  begin
+    xOutput.NullFlag := True;
+    Exit;
+  end;
+  xOutput.NullFlag := False;
+  // установки форматирования даты и времени
+  FFormatSettings := TFormatSettings.Create;
+  FFormatSettings.DateSeparator := '-';
+  FFormatSettings.TimeSeparator := ':';
+  // создаём поток байт для чтения blob
+  inStream := TBytesStream.Create(nil);
+  outStream := TStringStream.Create('', 65001);
+  jsonArray := TJsonArray.Create;
+  // получение текущего соединения и транзакции
+  att := AContext.getAttachment(AStatus);
+  tra := AContext.getTransaction(AStatus);
+  stmt := nil;
+  inBlob := nil;
+  outBlob := nil;
+  try
+    // читаем BLOB в поток
+    inBlob := att.openBlob(AStatus, tra, @xInput.SqlText, 0, nil);
+    inBlob.SaveToStream(AStatus, inStream);
+    inBlob.close(AStatus);
+    // подготавливаем оператор
+    stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0],
+      xInput.SqlDialect, IStatement.PREPARE_PREFETCH_METADATA);
+    // получаем выходные метаданные курсора
+    cursorMetaData := stmt.getOutputMetadata(AStatus);
+    // откурываем курсор
+    rs := stmt.openCursor(AStatus, tra, nil, nil, nil, 0);
+    // выделяем буфер нужного размера
+    msgLen := cursorMetaData.getMessageLength(AStatus);
+    msg := AllocMem(msgLen);
+    try
+      // читаем каждую запись курсора
+      while rs.fetchNext(AStatus, msg) = IStatus.RESULT_OK do
+      begin
+        // и пишем её в JSON
+        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData);
+      end;
+    finally
+      // освобождаем буфер
+      FreeMem(msg);
+    end;
+    // закрываем курсор
+    rs.close(AStatus);
+    // пишем JSON в поток
+    outStream.WriteString(jsonArray.ToJSON);
+
+    // пишем json в выходной blob
+    outBlob := att.createBlob(AStatus, tra, @xOutput.Json, 0, nil);
+    outBlob.LoadFromStream(AStatus, outStream);
+    outBlob.close(AStatus);
+  finally
+    if Assigned(inBlob) then
+      inBlob.release;
+    if Assigned(stmt) then
+      stmt.release;
+    if Assigned(outBlob) then
+      outBlob.release;
+    tra.release;
+    att.release;
+    jsonArray.Free;
+    inStream.Free;
+    outStream.Free;
+  end;
+end;
+]]>    
+  </programlisting>
+  </para>
 </chapter>

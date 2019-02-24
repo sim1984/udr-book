@@ -24,7 +24,7 @@ var
 function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
 begin
-  // регистрируем наши функции
+  // регистрируем функцию
   AUdrPlugin.registerFunction(AStatus, 'getJson', TFunctionSimpleFactory<TJsonFunction>.Create());
 
   theirUnloadFlag := AUnloadFlagLocal;

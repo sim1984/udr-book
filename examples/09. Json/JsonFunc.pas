@@ -19,7 +19,7 @@ uses
 // *********************************************************
 // create function GetJson (
 //   sql_text blob sub_type text,
-//   sql_dialect smallint not null default 3,
+//   sql_dialect smallint not null default 3
 // ) returns blob sub_type text character set utf8
 // external name 'JsonUtils!getJson'
 // engine udr;
@@ -27,19 +27,48 @@ uses
 
 type
 
+  TInput = record
+    SqlText: ISC_QUAD;
+    SqlNull: WordBool;
+    SqlDialect: Smallint;
+    SqlDialectNull: WordBool;
+  end;
+
+  InputPtr = ^TInput;
+
+  TOutput = record
+    Json: ISC_QUAD;
+    NullFlag: WordBool;
+  end;
+
+  OutputPtr = ^TOutput;
+
   // Внешняя функция TSumArgsFunction.
   TJsonFunction = class(IExternalFunctionImpl)
   private
     FFormatSettings: TFormatSettings;
   public
-    // Вызывается при уничтожении экземпляра функции
     procedure dispose(); override;
 
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
       AName: PAnsiChar; ANameSize: Cardinal); override;
 
+    { Преобразует целое в строку в соответсвии с масштабом
+
+      @param(AValue Значение)
+      @param(Scale Масштаб)
+      @returns(Строковое представление масштабированного целого)
+    }
     function MakeScaleInteger(AValue: Int64; Scale: Smallint): string;
 
+    { Добавляет закодированную запись в массив объектов Json
+
+      @param(AStatus Статус вектор)
+      @param(AContext Контекст выполнения внешней функции)
+      @param(AJson Массив объектов Json)
+      @param(ABuffer Буфер записи)
+      @param(AMeta Метаданые курсора)
+    }
     procedure writeJson(AStatus: IStatus; AContext: IExternalContext;
       AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata);
 
@@ -62,24 +91,8 @@ uses
 const
   SQL_DIALECT_V6 = 3;
 
-type
-  TInput = record
-    SqlText: ISC_QUAD;
-    SqlNull: WordBool;
-    SqlDialect: Smallint;
-    SqlDialectNull: WordBool;
-  end;
 
-  InputPtr = ^TInput;
-
-  TOutput = record
-    Json: ISC_QUAD;
-    NullFlag: WordBool;
-  end;
-
-  OutputPtr = ^TOutput;
-
-  { TExplainPlanFunction }
+  { TJsonFunction }
 
 procedure TJsonFunction.dispose;
 begin
@@ -105,12 +118,14 @@ var
 begin
   xInput := AInMsg;
   xOutput := AOutMsg;
+  // если один из входных аргументов NULL, то и результат NULL
   if xInput.SqlNull or xInput.SqlDialectNull then
   begin
     xOutput.NullFlag := True;
     Exit;
   end;
   xOutput.NullFlag := False;
+  // установки форматирования даты и времени
   FFormatSettings := TFormatSettings.Create;
   FFormatSettings.DateSeparator := '-';
   FFormatSettings.TimeSeparator := ':';
@@ -118,36 +133,44 @@ begin
   inStream := TBytesStream.Create(nil);
   outStream := TStringStream.Create('', 65001);
   jsonArray := TJsonArray.Create;
+  // получение текущего соединения и транзакции
   att := AContext.getAttachment(AStatus);
   tra := AContext.getTransaction(AStatus);
   stmt := nil;
   inBlob := nil;
   outBlob := nil;
   try
+    // читаем BLOB в поток
     inBlob := att.openBlob(AStatus, tra, @xInput.SqlText, 0, nil);
     inBlob.SaveToStream(AStatus, inStream);
     inBlob.close(AStatus);
-
+    // подготавливаем оператор
     stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0],
       xInput.SqlDialect, IStatement.PREPARE_PREFETCH_METADATA);
-
+    // получаем выходные метаданные курсора
     cursorMetaData := stmt.getOutputMetadata(AStatus);
-
+    // откурываем курсор
     rs := stmt.openCursor(AStatus, tra, nil, nil, nil, 0);
+    // выделяем буфер нужного размера
     msgLen := cursorMetaData.getMessageLength(AStatus);
     msg := AllocMem(msgLen);
     try
+      // читаем каждую запись курсора
       while rs.fetchNext(AStatus, msg) = IStatus.RESULT_OK do
       begin
+        // и пишем её в JSON
         writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData);
       end;
     finally
+      // освобождаем буфер
       FreeMem(msg);
     end;
+    // закрываем курсор
     rs.close(AStatus);
+    // пишем JSON в поток
     outStream.WriteString(jsonArray.ToJSON);
 
-    // пишем plan в выходной blob
+    // пишем json в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Json, 0, nil);
     outBlob.LoadFromStream(AStatus, outStream);
     outBlob.close(AStatus);
@@ -232,6 +255,7 @@ begin
     end;
     pData := ABuffer + AMeta.getOffset(AStatus, i);
     case TFBType(AMeta.getType(AStatus, i)) of
+      // VARCHAR
       SQL_VARYING:
         begin
           metaLength := AMeta.getLength(AStatus, i);
@@ -250,7 +274,7 @@ begin
           end;
           jsonObject.AddPair(FieldName, StringValue);
         end;
-
+      // CHAR
       SQL_TEXT:
         begin
           metaLength := AMeta.getLength(AStatus, i);
@@ -268,19 +292,21 @@ begin
           end;
           jsonObject.AddPair(FieldName, StringValue);
         end;
-
-      SQL_DOUBLE, SQL_D_FLOAT:
-        begin
-          DoubleValue := PDouble(pData)^;
-          jsonObject.AddPair(FieldName, TJSONNumber.Create(DoubleValue));
-        end;
-
+      // FLOAT
       SQL_FLOAT:
         begin
           SingleValue := PSingle(pData)^;
           jsonObject.AddPair(FieldName, TJSONNumber.Create(SingleValue));
         end;
-
+      // DOUBLE PRECISION
+      // DECIMAL(p, s), где p = 10..15 в 1 диалекте
+      SQL_DOUBLE, SQL_D_FLOAT:
+        begin
+          DoubleValue := PDouble(pData)^;
+          jsonObject.AddPair(FieldName, TJSONNumber.Create(DoubleValue));
+        end;
+      // INTEGER
+      // NUMERIC(p, s), где p = 1..4
       SQL_SHORT:
         begin
           scale := AMeta.getScale(AStatus, i);
@@ -295,7 +321,9 @@ begin
             jsonObject.AddPair(FieldName, TJSONNumber.Create(StringValue));
           end;
         end;
-
+      // INTEGER
+      // NUMERIC(p, s), где p = 5..9
+      // DECIMAL(p, s), где p = 1..9
       SQL_LONG:
         begin
           scale := AMeta.getScale(AStatus, i);
@@ -310,7 +338,9 @@ begin
             jsonObject.AddPair(FieldName, TJSONNumber.Create(StringValue));
           end;
         end;
-
+      // BIGINT
+      // NUMERIC(p, s), где p = 10..18 в 3 диалекте
+      // DECIMAL(p, s), где p = 10..18 в 3 диалекте
       SQL_INT64:
         begin
           scale := AMeta.getScale(AStatus, i);
@@ -325,7 +355,7 @@ begin
             jsonObject.AddPair(FieldName, TJSONNumber.Create(StringValue));
           end;
         end;
-
+      // TIMESTAMP
       SQL_TIMESTAMP:
         begin
           Timestampvalue := PISC_TIMESTAMP(pData)^;
@@ -338,7 +368,7 @@ begin
             FFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
-
+      // DATE
       SQL_DATE:
         begin
           DateValue := PISC_DATE(pData)^;
@@ -348,7 +378,7 @@ begin
             FFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
-
+      // TIME
       SQL_TIME:
         begin
           TimeValue := PISC_TIME(pData)^;
@@ -359,13 +389,13 @@ begin
             FFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
-
+      // BOOLEAN
       SQL_BOOLEAN:
         begin
           BooleanValue := PBoolean(pData)^;
           jsonObject.AddPair(FieldName, TJsonBool.Create(BooleanValue));
         end;
-
+      // BLOB
       SQL_BLOB, SQL_QUAD:
         begin
           BlobSubtype := AMeta.getSubType(AStatus, i);

@@ -153,8 +153,7 @@ type
     преоьразование масштабируемых чисел в строку, метод <methodname>writeJson</methodname> кодирует
     очередную запись выбранную из курсора в Json объект и добавляет его в массив таких объектов. Эти
     методы мы опишем позже, а пока приведём основной метод <methodname>execute</methodname> для
-    выполнения внешней функции.
-  <programlisting language="delphi">
+    выполнения внешней функции. <programlisting language="delphi">
 <![CDATA[
 procedure TJsonFunction.execute(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer);
@@ -248,4 +247,37 @@ end;
 ]]>    
   </programlisting>
   </para>
+  <para>Первым делом получаем из контекста выполнения функции текущее подлючение и текущую
+    транзакцию с помощью методов <methodname>getAttachment</methodname> и
+      <methodname>getTransaction</methodname> интерфейса
+      <interfacename>IExternalContext</interfacename>. Затем читаем содержимое BLOB для получения
+    текста SQL запроса. Запрос подготавливается с помощью метода <methodname>prepare</methodname>
+    интерфейса <interfacename>IAttachment</interfacename>. Пятым параметром передаётся SQL диалект
+    полученный из входного параметра нашей функции. Шестым параметром передаём флаг
+      <code>IStatement.PREPARE_PREFETCH_METADATA</code>, что обозначает что мы хотим получить
+    метаданные курсора вместе с результатом препарирования запроса. Сами выходные метаданные курсора
+    получаем с помощью метода <methodname>getOutputMetadata</methodname> интерфейса
+      <interfacename>IStatement</interfacename>.</para>
+  <note>
+    <para>На самом деле метод <methodname>getOutputMetadata</methodname> вернёт выходные метаданные
+      в любом случае. Флаг <code>IStatement.PREPARE_PREFETCH_METADATA</code> заставит получить
+      метаданные вместе с результатом подготовки запроса за один сетевой пакет. Поскольку мы
+      выполняем запрос в рамках текущего соединение никакого сетевого обмена не будет, и это не
+      принципиально.</para>
+  </note>
+  <para>Далее открываем курсор с помощью метода <methodname>openCursor</methodname> в рамках текущей
+    транзакции (параметр 2). Получаем размер выходного буфера под результат курсора с помощью метода
+      <methodname>getMessageLength</methodname> интерфейса
+      <interfacename>IMessageMetadata</interfacename>. Это позволяет выделить память под буфер,
+    которую мы освободим сразу после вычитки последней записи курсора.</para>
+  <para>Записи курсора читаются с помощью метода <methodname>fetchNext</methodname> интерфейса
+      <interfacename>IResultSet</interfacename>. Этот метод заполняет буфер <code>msg</code>
+    значениями полей курсора и возвращает <code>IStatus.RESULT_OK</code> до тех пор, пока записи
+    курсора не кончатся. Каждая прочитанная запись передаётся в метод
+      <methodname>writeJson</methodname>, который добавляет объект типа
+      <classname>TJsonObject</classname> с сериализованой записью курсора в массив
+      <classname>TJsonArray</classname>.</para>
+  <para>После завершения работы с курсором, закрываем его методом <methodname>close</methodname>,
+    преобразуем массив Json объектов в строку, пишем её в выходной поток, который записываем в
+    выходной Blob.</para>
 </chapter>

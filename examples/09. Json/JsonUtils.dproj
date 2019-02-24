@@ -3,7 +3,7 @@
         <ProjectGuid>{77F2F99E-B8E4-4CBF-940E-CA30BF407DF9}</ProjectGuid>
         <ProjectVersion>18.2</ProjectVersion>
         <FrameworkType>None</FrameworkType>
-        <MainSource>PlanUtils.dpr</MainSource>
+        <MainSource>JsonUtils.dpr</MainSource>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
@@ -45,7 +45,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <SanitizedProjectName>PlanUtils</SanitizedProjectName>
+        <SanitizedProjectName>JsonUtils</SanitizedProjectName>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <GenDll>true</GenDll>
         <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
@@ -97,8 +97,10 @@
         <DCCReference Include="..\Common\Firebird.pas"/>
         <DCCReference Include="..\Common\UdrFactories.pas"/>
         <DCCReference Include="..\Common\FbBlob.pas"/>
+        <DCCReference Include="..\Common\FbTypes.pas"/>
+        <DCCReference Include="..\Common\FbCharsets.pas"/>
         <DCCReference Include="UdrInit.pas"/>
-        <DCCReference Include="PlanFunc.pas"/>
+        <DCCReference Include="JsonFunc.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
@@ -117,18 +119,18 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">PlanUtils.dpr</Source>
+                    <Source Name="MainSource">JsonUtils.dpr</Source>
                 </Source>
             </Delphi.Personality>
             <Deployment Version="3">
-                <DeployFile LocalName="$(BDS)\Redist\osx32\libcgunwind.1.0.dylib" Class="DependencyModule">
-                    <Platform Name="OSX32">
+                <DeployFile LocalName="Win64\Release\JsonUtils.dll" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="Win64">
+                        <RemoteName>JsonUtils.dll</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win64\Release\PlanUtils.dll" Configuration="Release" Class="ProjectOutput">
-                    <Platform Name="Win64">
-                        <RemoteName>PlanUtils.dll</RemoteName>
+                <DeployFile LocalName="$(BDS)\Redist\osx32\libcgunwind.1.0.dylib" Class="DependencyModule">
+                    <Platform Name="OSX32">
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

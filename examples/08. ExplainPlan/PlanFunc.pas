@@ -1,4 +1,4 @@
-﻿unit ExplainPlanFunc;
+﻿unit PlanFunc;
 
 {$IFDEF FPC}
 {$MODE objfpc}{$H+}
@@ -12,17 +12,18 @@ uses
   UdrFactories;
 
 // *********************************************************
-// create function GetExplainPlan (
-// sql_text blob sub_type text
-// ) returns blob sub_type text characte rset none
-// external name 'planUtils!explainPlan'
+// create function GetPlan (
+//   sql_text blob sub_type text,
+//   explain boolean default false
+// ) returns blob sub_type text character set none
+// external name 'planUtils!getPlan'
 // engine udr;
 // *********************************************************
 
 type
 
   // Внешняя функция TSumArgsFunction.
-  TExplainPlanFunction = class(TExternalFunction)
+  TPlanFunction = class(TExternalFunction)
   public
     // Вызывается при уничтожении экземпляра функции
     procedure dispose(); override;
@@ -49,7 +50,9 @@ uses
 type
   TInput = record
     SqlText: ISC_QUAD;
-    NullFlag: WordBool;
+    SqlNull: WordBool;
+    Explain: Boolean;
+    ExplainNull: WordBool
   end;
 
   InputPtr = ^TInput;
@@ -63,12 +66,12 @@ type
 
 { TExplainPlanFunction }
 
-procedure TExplainPlanFunction.dispose;
+procedure TPlanFunction.dispose;
 begin
   Destroy;
 end;
 
-procedure TExplainPlanFunction.execute(AStatus: IStatus; AContext: IExternalContext;
+procedure TPlanFunction.execute(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer);
 var
   xInput: InputPtr;
@@ -82,7 +85,7 @@ var
 begin
   xInput := AInMsg;
   xOutput := AOutMsg;
-  if xInput.NullFlag then
+  if xInput.SqlNull or xInput.ExplainNull then
   begin
     xOutput.NullFlag := True;
     Exit;
@@ -102,10 +105,10 @@ begin
     inBlob.close(AStatus);
 
     stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0], 3, 0);
-    // получаем explain plan
-    plan := stmt.getPlan(AStatus, True);
+    // получаем plan
+    plan := stmt.getPlan(AStatus, xInput.Explain);
     outStream.Write(plan^, AnsiStrings.StrLen(plan));
-    // пишем explain plan в выходной blob
+    // пишем plan в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Plan, 0, nil);
     outBlob.LoadFromStream(AStatus, outStream);
     //outBlob.Write(AStatus, plan^, AnsiStrings.StrLen(plan));
@@ -124,7 +127,7 @@ begin
   end;
 end;
 
-procedure TExplainPlanFunction.getCharSet(AStatus: IStatus;
+procedure TPlanFunction.getCharSet(AStatus: IStatus;
   AContext: IExternalContext; AName: PAnsiChar; ANameSize: Cardinal);
 begin
 end;

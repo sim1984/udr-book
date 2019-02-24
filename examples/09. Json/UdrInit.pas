@@ -8,7 +8,7 @@ interface
 
 uses
   Firebird,
-  PlanFunc,
+  JsonFunc,
   UdrFactories;
 
 // точка входа для External Engine модуля UDR
@@ -25,7 +25,7 @@ function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
 begin
   // регистрируем наши функции
-  AUdrPlugin.registerFunction(AStatus, 'getPlan', TFunctionSimpleFactory<TPlanFunction>.Create());
+  AUdrPlugin.registerFunction(AStatus, 'getJson', TFunctionSimpleFactory<TJsonFunction>.Create());
 
   theirUnloadFlag := AUnloadFlagLocal;
   Result := @myUnloadFlag;

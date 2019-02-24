@@ -1,4 +1,4 @@
-library PlanUtils;
+library JsonUtils;
 
 {$IFDEF FPC}
   {$MODE objfpc}{$H+}
@@ -11,8 +11,10 @@ uses
   Firebird in '..\Common\Firebird.pas',
   UdrFactories in '..\Common\UdrFactories.pas',
   FbBlob in '..\Common\FbBlob.pas',
+  FbTypes in '..\Common\FbTypes.pas',
+  FbCharsets in '..\Common\FbCharsets.pas',
   UdrInit in 'UdrInit.pas',
-  PlanFunc in 'PlanFunc.pas';
+  JsonFunc in 'JsonFunc.pas';
 
 exports firebird_udr_plugin;
 

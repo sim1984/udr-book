@@ -51,7 +51,7 @@ PMyStruct = ^TMyStruct;
             них есть ограничение NOT NULL. Null-индикатор занимает 2 байта. Значение -1 обозначает
             что переменная/поле имеют значение NULL. Поскольку на данный момент в NULL-индикатор
             пишется только признак NULL, то удобно оторазить его на 2-х байтный логичексий тип. Типы
-            даных SQL отображаются в структуре следующим образом: <table frame="all">
+            данных SQL отображаются в структуре следующим образом: <table frame="all">
                 <?dbfo keep-together='auto'?>
                 <title>Отображение типов SQL на типы Delphi</title>
                 <tgroup cols="3">
@@ -99,7 +99,8 @@ PMyStruct = ^TMyStruct;
                         <row>
                             <entry><code>NUMERIC(<replaceable>N</replaceable>,
                                         <replaceable>M</replaceable>)</code></entry>
-                            <entry><para> Тип данных зависит от точности и диалекта: <itemizedlist>
+                            <entry>
+                                <para> Тип данных зависит от точности и диалекта: <itemizedlist>
                                         <listitem>
                                             <para>1-4 — <code>Smallint</code>;</para>
                                         </listitem>
@@ -112,14 +113,18 @@ PMyStruct = ^TMyStruct;
                                         <listitem>
                                             <para>10-15 (1 диалект) — <code>Double</code>.</para>
                                         </listitem>
-                                    </itemizedlist></para></entry>
-                            <entry><para>В качестве значения в сообщение будет передано число
-                                    умноженное на 10<superscript>M</superscript>.</para></entry>
+                                    </itemizedlist></para>
+                            </entry>
+                            <entry>
+                                <para>В качестве значения в сообщение будет передано число
+                                    умноженное на 10<superscript>M</superscript>.</para>
+                            </entry>
                         </row>
                         <row>
                             <entry><code>DECIMAL(<replaceable>N</replaceable>,
                                         <replaceable>M</replaceable>)</code></entry>
-                            <entry><para> Тип данных зависит от точности и диалекта: <itemizedlist>
+                            <entry>
+                                <para> Тип данных зависит от точности и диалекта: <itemizedlist>
                                         <listitem>
                                             <para>1-4 — <code>Integer</code>;</para>
                                         </listitem>
@@ -132,37 +137,46 @@ PMyStruct = ^TMyStruct;
                                         <listitem>
                                             <para>10-15 (1 диалект) — <code>Double</code>.</para>
                                         </listitem>
-                                    </itemizedlist></para></entry>
-                            <entry><para>В качестве значения в сообщение будет передано число
-                                    умноженное на 10<superscript>M</superscript>.</para></entry>
+                                    </itemizedlist></para>
+                            </entry>
+                            <entry>
+                                <para>В качестве значения в сообщение будет передано число
+                                    умноженное на 10<superscript>M</superscript>.</para>
+                            </entry>
                         </row>
                         <row>
                             <entry><code>CHAR(<replaceable>N</replaceable>)</code></entry>
                             <entry><code>array[0 .. <replaceable>M</replaceable>] of
                                 AnsiChar</code></entry>
-                            <entry><para><replaceable>M</replaceable> вычисляется по формуле <code>M
-                                        = N * BytesPerChar - 1</code>, где
+                            <entry>
+                                <para><replaceable>M</replaceable> вычисляется по формуле <code>M =
+                                        N * BytesPerChar - 1</code>, где
                                         <replaceable>BytesPerChar</replaceable> - количество байт на
                                     символ, зависит от кодировки переменной/поля. Например для UTF-8
-                                    - это 4 байт/символ, для WIN1251 - 1 байт/символ.</para></entry>
+                                    - это 4 байт/символ, для WIN1251 - 1 байт/символ.</para>
+                            </entry>
                         </row>
                         <row>
                             <entry><code>VARCHAR(<replaceable>N</replaceable>)</code></entry>
-                            <entry><para>
+                            <entry>
+                                <para>
                                     <programlisting>
 record
   Length: Smallint;
   Data: array[0 .. <replaceable>M</replaceable>] of AnsiChar;
 end
                                 </programlisting>
-                                </para></entry>
-                            <entry><para><replaceable>M</replaceable> вычисляется по формуле <code>M
-                                        = N * BytesPerChar - 1</code>, где
+                                </para>
+                            </entry>
+                            <entry>
+                                <para><replaceable>M</replaceable> вычисляется по формуле <code>M =
+                                        N * BytesPerChar - 1</code>, где
                                         <replaceable>BytesPerChar</replaceable> - количество байт на
                                     символ, зависит от кодировки переменной/поля. Например для UTF-8
                                     - это 4 байт/символ, для WIN1251 - 1 байт/символ. В
                                         <replaceable>Length</replaceable> передаётся реальная длина
-                                    строки в байтах.</para></entry>
+                                    строки в символах.</para>
+                            </entry>
                         </row>
                         <row>
                             <entry><code>DATE</code></entry>
@@ -177,7 +191,8 @@ end
                         <row>
                             <entry><code>TIMESTAMP</code></entry>
                             <entry><code>ISC_TIMESTAMP</code></entry>
-                            <entry><para>Тип <code>ISC_TIMESTAMP</code> не определён в
+                            <entry>
+                                <para>Тип <code>ISC_TIMESTAMP</code> не определён в
                                         <filename>Firebird.pas</filename>, вы можете определить его
                                     сами следующим образом:
                                     <programlisting>
@@ -186,14 +201,18 @@ ISC_TIMESTAMP = record
   time: ISC_TIME;
 end;                                    
                                 </programlisting>
-                                </para></entry>
+                                </para>
+                            </entry>
                         </row>
                         <row>
                             <entry><code>BLOB</code></entry>
                             <entry><code>ISC_QUAD</code></entry>
-                            <entry><para>Содержимое BLOB никогда не передаётся непосредственно,
-                                    вместо него передаётся BlobId. Как работать с типом BLOB
-                                    расскажем ползже.</para></entry>
+                            <entry>
+                                <para>Содержимое BLOB никогда не передаётся непосредственно, вместо
+                                    него передаётся BlobId. Как работать с типом BLOB будет
+                                    расказано в главе <link linkend="udr-blob">Работа с типом
+                                        BLOB</link>.</para>
+                            </entry>
                         </row>
                     </tbody>
                 </tgroup>
@@ -228,7 +247,7 @@ POutput = ^TOutput;
 ]]> 
             </programlisting>
             </para>
-            <para>Если таже самая функия определена с другими типами (в 3 диалекте): <programlisting language="sql">
+            <para>Если таже самая функция определена с другими типами (в 3 диалекте): <programlisting language="sql">
 <![CDATA[
 function SUM_ARGS(A NUMERIC(4, 2), B NUMERIC(9, 3)) RETURNS NUMERIC(18, 6)
 ....
@@ -288,7 +307,7 @@ PInput = ^TInput;
 
         <para>Как было описано выше с буфером сообщений можно работать с использованием экземляра
             объекта реализующего интерфейс <interfacename>IMessageMetadata</interfacename>. Этот
-            интерфейс позволеят узнать о переменной/поле следующие сведения: <itemizedlist>
+            интерфейс позволяет узнать о переменной/поле следующие сведения: <itemizedlist>
                 <listitem>
                     <para>имя переменной/поля;</para>
                 </listitem>
@@ -308,7 +327,7 @@ PInput = ^TInput;
                     <para>может ли переменная/поле принимать значение NULL;</para>
                 </listitem>
                 <listitem>
-                    <para>смещение в буфере сообщений;</para>
+                    <para>смещение в буфере сообщений для данных;</para>
                 </listitem>
                 <listitem>
                     <para>смещение в буфере сообщений для NULL-индикатора.</para>
@@ -386,7 +405,7 @@ unsigned getType(StatusType* status, unsigned index)
 ]]>
 </programlisting>
                         </para>
-                        <para>вовзращает SQL тип поля. </para>
+                        <para>возвращает SQL тип поля. </para>
                     </listitem>
                     <listitem>
                         <para>isNullable</para>
@@ -419,7 +438,7 @@ unsigned getLength(StatusType* status, unsigned index)
 ]]>
 </programlisting>
                         </para>
-                        <para>возвращает максимальную длину поля. </para>
+                        <para>возвращает максимальную длину поля в байтах. </para>
                     </listitem>
                     <listitem>
                         <para>getScale</para>
@@ -675,6 +694,11 @@ end;
 ]]>
 </programlisting>
             </para>
+            <note>
+                <para>В главе <link linkend="udr-contexts">Контекст соединения и транзакции</link>
+                    приведён большой пример для работы с различными SQL типами с использованием
+                    интерфейса <interfacename>IMessageMetadata</interfacename>.</para>
+            </note>
         </section>
     </section>
     <section xml:id="message-metadata-record">
@@ -747,13 +771,11 @@ from rdb$database
         <para>Для упрощения работы с <interfacename>IMessageMetadata</interfacename> и буферами
             можно написать удобную обёртку или попробовать совместно использовать
                 <interfacename>IMessageMetadata</interfacename> и структуры для отображения
-            сообщений. Здесь мы покажем использование второго способа, а первый способ будет показан
-            чуть позднее.</para>
+            сообщений. Здесь мы покажем использование второго способа.</para>
 
         <para>Реализация такой идея достаточно проста: в фабрике функций мы будем создавать
-            различные экземпляры функций в зависимости о типа входного аргумента. В современных
-            версиях Delphi вы можете использовать дженерики для обобщения кода.
-            <programlisting language="delphi">
+            различные экземпляры функций в зависимости от типа входного аргумента. В современных
+            версиях Delphi вы можете использовать дженерики для обобщения кода. <programlisting language="delphi">
 <![CDATA[  
 .......................
 type

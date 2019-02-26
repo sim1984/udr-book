@@ -15,7 +15,7 @@ type
 
     create procedure SaveBlobToFile (
         ABlobData blob sub_type binary,
-        AFileName varchar(255) character set utf8
+        AFileName varchar(255) character set none
     );
     external name 'BlobFileUtils!SaveBlobToFile'
     engine udr;
@@ -27,7 +27,7 @@ type
     blobDataNull: WordBool;
     filename: record
       len: Smallint;
-      str: array [0 .. 1019] of AnsiChar;
+      str: array [0 .. 254] of AnsiChar;
     end;
     filenameNull: WordBool;
   end;
@@ -83,12 +83,9 @@ function TSaveBlobToFileProc.open(AStatus: IStatus; AContext: IExternalContext;
 var
   xInput: TInputPtr;
   xFileName: string;
-  xStream: TFileStream;
   att: IAttachment;
   trx: ITransaction;
-  blob: IBlob;
-  buffer: array [0 .. 32767] of AnsiChar;
-  l: Integer;
+  xUtil: IUtil;
 begin
   xInput := AInMsg;
   if xInput.blobDataNull or xInput.filenameNull then
@@ -97,36 +94,15 @@ begin
     Exit;
   end;
 
-  xFileName := TEncoding.UTF8.GetString(TBytes(@xInput.filename.str), 0, xInput.filename.len * 4);
-  SetLength(xFileName, xInput.filename.len);
-  xStream := TFileStream.Create(xFileName, fmCreate);
   att := AContext.getAttachment(AStatus);
   trx := AContext.getTransaction(AStatus);
-  blob := nil;
+  xUtil := AContext.getMaster().getUtilInterface();
   try
-    xStream.Seek(0, soFromBeginning);
-    blob := att.openBlob(AStatus, trx, @xInput.blobData, 0, nil);
-    while True do
-    begin
-      case blob.getSegment(AStatus, SizeOf(buffer), @buffer, @l) of
-        IStatus.RESULT_OK:
-          xStream.WriteBuffer(buffer, l);
-        IStatus.RESULT_SEGMENT:
-          xStream.WriteBuffer(buffer, l);
-      else
-        break;
-      end;
-    end;
-    blob.close(AStatus);
+    xUtil.dumpBlob(AStatus, @xInput.blobData, att, trx, @xInput.filename.str, false);
   finally
-    if Assigned(blob) then
-      blob.release;
-    att.release;
     trx.release;
-    xStream.Free;
+    att.release;
   end;
-
-  Result := nil;
 end;
 
 

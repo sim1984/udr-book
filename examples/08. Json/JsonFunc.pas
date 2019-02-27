@@ -18,8 +18,8 @@ uses
 
 // *********************************************************
 // create function GetJson (
-//   sql_text blob sub_type text,
-//   sql_dialect smallint not null default 3
+// sql_text blob sub_type text,
+// sql_dialect smallint not null default 3
 // ) returns blob sub_type text character set utf8
 // external name 'JsonUtils!getJson'
 // engine udr;
@@ -90,7 +90,6 @@ uses
 
 const
   SQL_DIALECT_V6 = 3;
-
 
   { TJsonFunction }
 
@@ -224,13 +223,13 @@ var
   SmallintValue: Smallint;
   IntegerValue: Integer;
   BigintValue: Int64;
-  scale: Smallint;
+  Scale: Smallint;
   SingleValue: Single;
   DoubleValue: Double;
   BooleanValue: Boolean;
   DateValue: ISC_DATE;
   TimeValue: ISC_TIME;
-  Timestampvalue: ISC_TIMESTAMP;
+  TimestampValue: ISC_TIMESTAMP;
   DateTimeValue: TDateTime;
   year, month, day: Cardinal;
   hours, minutes, seconds, fractions: Cardinal;
@@ -242,22 +241,29 @@ var
   att: IAttachment;
   tra: ITransaction;
 begin
+  // Получаем IUtil
   util := AContext.getMaster().getUtilInterface();
+  // Создаём объект TJsonObject в которой будем
+  // записывать значение полей записи
   jsonObject := TJsonObject.Create;
   for i := 0 to AMeta.getCount(AStatus) - 1 do
   begin
+    // получаем алиас поля в запросе
     FieldName := AMeta.getAlias(AStatus, i);
     NullFlag := PWordBool(ABuffer + AMeta.getNullOffset(AStatus, i))^;
     if NullFlag then
     begin
+      // если NULL пишем его в JSON и переходим к следующему полю
       jsonObject.AddPair(FieldName, TJsonNull.Create);
       continue;
     end;
+    // получаем указатель на данные поля
     pData := ABuffer + AMeta.getOffset(AStatus, i);
     case TFBType(AMeta.getType(AStatus, i)) of
       // VARCHAR
       SQL_VARYING:
         begin
+          // размер буфера для VARCHAR
           metaLength := AMeta.getLength(AStatus, i);
           charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
           // Для VARCHAR первые 2 байта - длина
@@ -268,8 +274,10 @@ begin
               charLength)
           else
           begin
+            // копируем данные в буфер начиная со 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
-            StringValue := charset.GetString(TBytes(@CharBuffer), 0, metaLength);
+            StringValue := charset.GetString(TBytes(@CharBuffer), 0,
+              metaLength);
             SetLength(StringValue, charLength);
           end;
           jsonObject.AddPair(FieldName, StringValue);
@@ -277,16 +285,19 @@ begin
       // CHAR
       SQL_TEXT:
         begin
+          // размер буфера для CHAR
           metaLength := AMeta.getLength(AStatus, i);
           charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
-            StringValue := TNetEncoding.Base64.EncodeBytesToString
-              ((pData + 2), metaLength)
+            StringValue := TNetEncoding.Base64.EncodeBytesToString((pData + 2),
+              metaLength)
           else
           begin
+            // копируем данные в буфер
             Move(pData^, CharBuffer, metaLength);
-            StringValue := charset.GetString(TBytes(@CharBuffer), 0, metaLength);
+            StringValue := charset.GetString(TBytes(@CharBuffer), 0,
+              metaLength);
             charLength := metaLength div charset.GetCharWidth;
             SetLength(StringValue, charLength);
           end;
@@ -309,9 +320,9 @@ begin
       // NUMERIC(p, s), где p = 1..4
       SQL_SHORT:
         begin
-          scale := AMeta.getScale(AStatus, i);
+          Scale := AMeta.getScale(AStatus, i);
           SmallintValue := PSmallint(pData)^;
-          if (scale = 0) then
+          if (Scale = 0) then
           begin
             jsonObject.AddPair(FieldName, TJSONNumber.Create(SmallintValue));
           end
@@ -326,9 +337,9 @@ begin
       // DECIMAL(p, s), где p = 1..9
       SQL_LONG:
         begin
-          scale := AMeta.getScale(AStatus, i);
+          Scale := AMeta.getScale(AStatus, i);
           IntegerValue := PInteger(pData)^;
-          if (scale = 0) then
+          if (Scale = 0) then
           begin
             jsonObject.AddPair(FieldName, TJSONNumber.Create(IntegerValue));
           end
@@ -343,9 +354,9 @@ begin
       // DECIMAL(p, s), где p = 10..18 в 3 диалекте
       SQL_INT64:
         begin
-          scale := AMeta.getScale(AStatus, i);
+          Scale := AMeta.getScale(AStatus, i);
           BigintValue := Pint64(pData)^;
-          if (scale = 0) then
+          if (Scale = 0) then
           begin
             jsonObject.AddPair(FieldName, TJSONNumber.Create(BigintValue));
           end
@@ -358,12 +369,15 @@ begin
       // TIMESTAMP
       SQL_TIMESTAMP:
         begin
-          Timestampvalue := PISC_TIMESTAMP(pData)^;
-          util.decodeDate(Timestampvalue.date, @year, @month, @day);
-          util.decodeTime(Timestampvalue.time, @hours, @minutes, @seconds,
+          TimestampValue := PISC_TIMESTAMP(pData)^;
+          // получаем составные части даты-времени
+          util.decodeDate(TimestampValue.date, @year, @month, @day);
+          util.decodeTime(TimestampValue.time, @hours, @minutes, @seconds,
             @fractions);
+          // получаем дату-время в родном типе Delphi
           DateTimeValue := EncodeDate(year, month, day) +
             EncodeTime(hours, minutes, seconds, fractions div 10);
+          // форматируем дату-время по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd hh:nn:ss', DateTimeValue,
             FFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
@@ -372,8 +386,11 @@ begin
       SQL_DATE:
         begin
           DateValue := PISC_DATE(pData)^;
+          // получаем составные части даты
           util.decodeDate(DateValue, @year, @month, @day);
+          // получаем дату в родном типе Delphi
           DateTimeValue := EncodeDate(year, month, day);
+          // форматируем дату по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd', DateTimeValue,
             FFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
@@ -382,9 +399,12 @@ begin
       SQL_TIME:
         begin
           TimeValue := PISC_TIME(pData)^;
+          // получаем составные части времени
           util.decodeTime(TimeValue, @hours, @minutes, @seconds, @fractions);
+          // получаем время в родном типе Delphi
           DateTimeValue := EncodeTime(hours, minutes, seconds,
             fractions div 10);
+          // форматируем время по заданному формату
           StringValue := FormatDateTime('hh:nn:ss', DateTimeValue,
             FFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
@@ -407,6 +427,7 @@ begin
           begin
             // текст
             charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
+            // создаём поток с заданой кодировкой
             textStream := TStringStream.Create('', charset.GetCodePage);
             try
               blob.SaveToStream(AStatus, textStream);
@@ -424,7 +445,9 @@ begin
             binaryStream := TBytesStream.Create;
             try
               blob.SaveToStream(AStatus, binaryStream);
-              StringValue := TNetEncoding.Base64.EncodeBytesToString(binaryStream.Memory, binaryStream.Size);
+              // кодируем строку в base64
+              StringValue := TNetEncoding.Base64.EncodeBytesToString
+                (binaryStream.Memory, binaryStream.Size);
             finally
               binaryStream.Free;
               blob.release;
@@ -437,6 +460,7 @@ begin
 
     end;
   end;
+  // добавление записи в формате Json в массив
   AJson.AddElement(jsonObject);
 end;
 

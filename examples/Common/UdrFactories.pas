@@ -24,11 +24,10 @@ type
   end;
 
   TExternalFunction = class(IExternalFunctionImpl)
-    class function createFunction(AStatus: IStatus; AContext: IExternalContext;
-      AMetadata: IRoutineMetadata): IExternalFunction; virtual; abstract;
+    Metadata: IRoutineMetadata;
   end;
 
-  TFunctionFactory<T: TExternalFunction> = class(IUdrFunctionFactoryImpl)
+  TFunctionFactory<T: TExternalFunction, constructor> = class(IUdrFunctionFactoryImpl)
     procedure dispose(); override;
 
     procedure setup(AStatus: IStatus; AContext: IExternalContext;
@@ -52,11 +51,10 @@ type
   end;
 
   TExternalProcedure = class(IExternalProcedureImpl)
-    class function createProcedure(AStatus: IStatus; AContext: IExternalContext;
-      AMetadata: IRoutineMetadata): IExternalProcedure; virtual; abstract;
+    Metadata: IRoutineMetadata;
   end;
 
-  TProcedureFactory<T: TExternalProcedure> = class(IUdrProcedureFactoryImpl)
+  TProcedureFactory<T: TExternalProcedure, constructor> = class(IUdrProcedureFactoryImpl)
     procedure dispose(); override;
 
     procedure setup(AStatus: IStatus; AContext: IExternalContext;
@@ -119,7 +117,8 @@ end;
 function TFunctionFactory<T>.newItem(AStatus: IStatus;
   AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
 begin
-  Result := T.createFunction(AStatus, AContext, AMetadata);
+  Result := T.Create;
+  (Result as T).Metadata := AMetadata;
 end;
 
 procedure TFunctionFactory<T>.setup(AStatus: IStatus;
@@ -139,7 +138,8 @@ end;
 function TProcedureFactory<T>.newItem(AStatus: IStatus;
   AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalProcedure;
 begin
-  Result := T.createProcedure(AStatus, AContext, AMetadata);
+  Result := T.Create;
+  (Result as T).Metadata := AMetadata;
 end;
 
 procedure TProcedureFactory<T>.setup(AStatus: IStatus;

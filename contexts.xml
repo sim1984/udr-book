@@ -109,8 +109,6 @@ type
 
   // Внешняя функция TSumArgsFunction.
   TJsonFunction = class(IExternalFunctionImpl)
-  private
-    FFormatSettings: TFormatSettings;
   public
     procedure dispose(); override;
 
@@ -132,9 +130,11 @@ type
       @param(AJson Массив объектов Json)
       @param(ABuffer Буфер записи)
       @param(AMeta Метаданые курсора)
+      @param(AFormatSetting Установки формата даты и времени)
     }
     procedure writeJson(AStatus: IStatus; AContext: IExternalContext;
-      AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata);
+      AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata;
+      AFormatSettings: TFormatSettings);
 
     { Выполнение внешней функции
 
@@ -158,6 +158,7 @@ type
 procedure TJsonFunction.execute(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer);
 var
+  xFormatSettings: TFormatSettings;
   xInput: InputPtr;
   xOutput: OutputPtr;
   att: IAttachment;
@@ -182,9 +183,9 @@ begin
   end;
   xOutput.NullFlag := False;
   // установки форматирования даты и времени
-  FFormatSettings := TFormatSettings.Create;
-  FFormatSettings.DateSeparator := '-';
-  FFormatSettings.TimeSeparator := ':';
+  xFormatSettings := TFormatSettings.Create;
+  xFormatSettings.DateSeparator := '-';
+  xFormatSettings.TimeSeparator := ':';
   // создаём поток байт для чтения blob
   inStream := TBytesStream.Create(nil);
   outStream := TStringStream.Create('', 65001);
@@ -215,7 +216,7 @@ begin
       while rs.fetchNext(AStatus, msg) = IStatus.RESULT_OK do
       begin
         // и пишем её в JSON
-        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData);
+        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData, xFormatSettings);
       end;
     finally
       // освобождаем буфер
@@ -280,14 +281,14 @@ end;
   <para>После завершения работы с курсором, закрываем его методом <methodname>close</methodname>,
     преобразуем массив Json объектов в строку, пишем её в выходной поток, который записываем в
     выходной Blob.</para>
-  <para>Теперь разберём метод writeJson. Объект IUtil потребуется нам для того, чтобы получать
-    функции для декодирования даты и времени. В этом методе активно задействована работа с
-    метаданными выходных полей курсора с помощью интерфейса
-      <interfacename>IMessageMetadata</interfacename>. Первым дело создаём объект тип
-      <classname>TJsonObject</classname> в который будем записывать значения полей текущей записи. В
-    качестве имён ключей будем использовать алиасы полей из курсора. Если установлен NullFlag, то
-    пишем значение null для ключа и переходим к следующему полю, в противносм случае анализируем тип
-    поля и пишем его значение в Json. <programlisting language="delphi">
+  <para>Теперь разберём метод <methodname>writeJson</methodname>. Объект
+      <interfacename>IUtil</interfacename> потребуется нам для того, чтобы получать функции для
+    декодирования даты и времени. В этом методе активно задействована работа с метаданными выходных
+    полей курсора с помощью интерфейса <interfacename>IMessageMetadata</interfacename>. Первым дело
+    создаём объект тип <classname>TJsonObject</classname> в который будем записывать значения полей
+    текущей записи. В качестве имён ключей будем использовать алиасы полей из курсора. Если
+    установлен NullFlag, то пишем значение null для ключа и переходим к следующему полю, в
+    противносм случае анализируем тип поля и пишем его значение в Json. <programlisting language="delphi">
 <![CDATA[
 function TJsonFunction.MakeScaleInteger(AValue: Int64; Scale: Smallint): string;
 var
@@ -302,7 +303,8 @@ begin
 end;
 
 procedure TJsonFunction.writeJson(AStatus: IStatus; AContext: IExternalContext;
-  AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata);
+  AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata;
+  AFormatSettings: TFormatSettings);
 var
   jsonObject: TJsonObject;
   i: Integer;
@@ -370,10 +372,10 @@ begin
               charLength)
           else
           begin
-            // копируем данные в буфер начиная со 3 байта
+            // копируем данные в буфер начиная с 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
-              metaLength);
+              charLength * charset.GetCharWidth)
             SetLength(StringValue, charLength);
           end;
           jsonObject.AddPair(FieldName, StringValue);
@@ -475,7 +477,7 @@ begin
             EncodeTime(hours, minutes, seconds, fractions div 10);
           // форматируем дату-время по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd hh:nn:ss', DateTimeValue,
-            FFormatSettings);
+            AFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
       // DATE
@@ -488,7 +490,7 @@ begin
           DateTimeValue := EncodeDate(year, month, day);
           // форматируем дату по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd', DateTimeValue,
-            FFormatSettings);
+            AFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
       // TIME
@@ -502,7 +504,7 @@ begin
             fractions div 10);
           // форматируем время по заданному формату
           StringValue := FormatDateTime('hh:nn:ss', DateTimeValue,
-            FFormatSettings);
+            AFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
       // BOOLEAN
@@ -576,4 +578,22 @@ end;
       страницы, размера символа в байтах, получение класса <classname>TEncoding</classname> в нужной
       кодировки, а также функцию для преобразования массива байт в юникодную строку Delphi.</para>
   </note>
+
+  <para>Для строк типа CHAR и VARCHAR проверяем кодировку, если это кодировка OCTETS, то кодируем
+    строку алгоритмом base64, в противном случае преобразуем данные из буфера в строку Delphi.
+    Обратите внимание, что для типа VARCHAR первые 2 байта содержат длину строки в символах. </para>
+  <para>Типы SMALLINT, INTEGER, BIGINT могут быть как обычными целыми числами, так масштабируемыми.
+    Масштаб числа можно получить методом <methodname>getScale</methodname> интерфейса
+      <interfacename>IMessageMetadata</interfacename>. Если масштаб не равен 0, то требуется
+    специальная обработка числа, которая осуществляет методом
+      <methodname>MakeScaleInteger</methodname>.</para>
+  <para>Типы DATE, TIME и TIMESTAMP декодируется на составные части даты и времени с помощью методов
+      <methodname>decodeDate</methodname> и <methodname>decodeTime</methodname> интерфейса
+      <interfacename>IUtil</interfacename>. Используем части даты и времени для получения
+    даты-времени в стандартном Delphi типе TDateTime.</para>
+  <para>С типом BLOB работаем через потоки Delphi. Если BLOB бинарный, то создаём поток типа
+      <classname>TBytesStream</classname>. Полученный массив байт кодируем с помощью алгоритма
+    base64. Если BLOB текстовый, то используем специализированный поток
+      <classname>TStringStream</classname> для строк, котоый позволяет учесть кодовую страницу.
+    Кодовую страницу мы получаем из кодировки BLOB поля.</para>
 </chapter>

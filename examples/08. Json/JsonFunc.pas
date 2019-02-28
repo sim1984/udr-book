@@ -45,8 +45,6 @@ type
 
   // Внешняя функция TSumArgsFunction.
   TJsonFunction = class(IExternalFunctionImpl)
-  private
-    FFormatSettings: TFormatSettings;
   public
     procedure dispose(); override;
 
@@ -68,9 +66,11 @@ type
       @param(AJson Массив объектов Json)
       @param(ABuffer Буфер записи)
       @param(AMeta Метаданые курсора)
+      @param(AFormatSetting Установки формата даты и времени)
     }
     procedure writeJson(AStatus: IStatus; AContext: IExternalContext;
-      AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata);
+      AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata;
+      AFormatSettings: TFormatSettings);
 
     { Выполнение внешней функции
 
@@ -101,6 +101,7 @@ end;
 procedure TJsonFunction.execute(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer);
 var
+  xFormatSettings: TFormatSettings;
   xInput: InputPtr;
   xOutput: OutputPtr;
   att: IAttachment;
@@ -125,9 +126,9 @@ begin
   end;
   xOutput.NullFlag := False;
   // установки форматирования даты и времени
-  FFormatSettings := TFormatSettings.Create;
-  FFormatSettings.DateSeparator := '-';
-  FFormatSettings.TimeSeparator := ':';
+  xFormatSettings := TFormatSettings.Create;
+  xFormatSettings.DateSeparator := '-';
+  xFormatSettings.TimeSeparator := ':';
   // создаём поток байт для чтения blob
   inStream := TBytesStream.Create(nil);
   outStream := TStringStream.Create('', 65001);
@@ -158,7 +159,7 @@ begin
       while rs.fetchNext(AStatus, msg) = IStatus.RESULT_OK do
       begin
         // и пишем её в JSON
-        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData);
+        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData, xFormatSettings);
       end;
     finally
       // освобождаем буфер
@@ -206,7 +207,8 @@ begin
 end;
 
 procedure TJsonFunction.writeJson(AStatus: IStatus; AContext: IExternalContext;
-  AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata);
+  AJson: TJsonArray; ABuffer: PByte; AMeta: IMessageMetadata;
+  AFormatSettings: TFormatSettings);
 var
   jsonObject: TJsonObject;
   i: Integer;
@@ -271,7 +273,7 @@ begin
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
             StringValue := TNetEncoding.Base64.EncodeBytesToString((pData + 2),
-              charLength)
+              charLength * charset.GetCharWidth)
           else
           begin
             // копируем данные в буфер начиная со 3 байта
@@ -379,7 +381,7 @@ begin
             EncodeTime(hours, minutes, seconds, fractions div 10);
           // форматируем дату-время по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd hh:nn:ss', DateTimeValue,
-            FFormatSettings);
+            AFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
       // DATE
@@ -392,7 +394,7 @@ begin
           DateTimeValue := EncodeDate(year, month, day);
           // форматируем дату по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd', DateTimeValue,
-            FFormatSettings);
+            AFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
       // TIME
@@ -406,7 +408,7 @@ begin
             fractions div 10);
           // форматируем время по заданному формату
           StringValue := FormatDateTime('hh:nn:ss', DateTimeValue,
-            FFormatSettings);
+            AFormatSettings);
           jsonObject.AddPair(FieldName, StringValue);
         end;
       // BOOLEAN

@@ -81,7 +81,7 @@ var
   stmt: IStatement;
   plan: PAnsiChar;
   inBlob, outBlob: IBlob;
-  inStream, outStream: TBytesStream;
+  inStream: TBytesStream;
 begin
   xInput := AInMsg;
   xOutput := AOutMsg;
@@ -93,7 +93,6 @@ begin
   xOutput.NullFlag := False;
   // создаём поток байт для чтения blob
   inStream := TBytesStream.Create(nil);
-  outStream :=  TBytesStream.Create(nil);
   att := AContext.getAttachment(AStatus);
   tra := AContext.getTransaction(AStatus);
   stmt := nil;
@@ -107,11 +106,9 @@ begin
     stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0], 3, 0);
     // получаем plan
     plan := stmt.getPlan(AStatus, xInput.Explain);
-    outStream.Write(plan^, AnsiStrings.StrLen(plan));
     // пишем plan в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Plan, 0, nil);
-    outBlob.LoadFromStream(AStatus, outStream);
-    //outBlob.Write(AStatus, plan^, AnsiStrings.StrLen(plan));
+    outBlob.Write(AStatus, plan^, AnsiStrings.StrLen(plan));
     outBlob.close(AStatus);
   finally
     if Assigned(inBlob) then
@@ -123,7 +120,6 @@ begin
     tra.release;
     att.release;
     inStream.Free;
-    outStream.Free;
   end;
 end;
 

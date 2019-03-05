@@ -18,8 +18,8 @@ type
   end;
 
   TFbBlobHelper = class helper for IBlob
-    function Read(AStatus: IStatus; var Buffer; Count: Longint): Longint;
-    function Write(AStatus: IStatus; const Buffer; Count: Longint): Longint;
+    function Read(AStatus: IStatus; var Buffer; Count: Cardinal): Cardinal;
+    function Write(AStatus: IStatus; const Buffer; Count: Cardinal): Cardinal;
     procedure GetBlobInfo(AStatus: IStatus; var NumSegments, MaxSegmentSize,
       TotalSize: Longint; var BlobType: Smallint);
     { Загружает в BLOB содержимое потока
@@ -135,9 +135,9 @@ begin
 end;
 
 function TFbBlobHelper.Read(AStatus: IStatus; var Buffer;
-  Count: Integer): Longint;
+  Count: Cardinal): Cardinal;
 var
-  xLocalLength: Shortint;
+  xLocalLength: Cardinal;
   xLocalBuffer: PByte;
   xBytesRead: Cardinal;
   xRetutnCode: Integer;
@@ -178,10 +178,10 @@ begin
 end;
 
 function TFbBlobHelper.Write(AStatus: IStatus; const Buffer;
-  Count: Integer): Longint;
+  Count: Cardinal): Cardinal;
 var
   xLocalBuffer: PByte;
-  xLocalLength: Shortint;
+  xLocalLength: Cardinal;
 begin
   Result := 0;
   if Count = 0 then

@@ -1,4 +1,4 @@
-unit UdrFactories;
+﻿unit UdrFactories;
 
 {$IFDEF FPC}
 {$MODE DELPHI}{$H+}
@@ -189,7 +189,7 @@ end;
 
 procedure TTriggerSimpleFactory<T>.dispose;
 begin
-
+  Destroy;
 end;
 
 function TTriggerSimpleFactory<T>.newItem(AStatus: IStatus;
@@ -209,7 +209,7 @@ end;
 
 procedure TTriggerFactory<T>.dispose;
 begin
-
+  Destroy;
 end;
 
 function TTriggerFactory<T>.newItem(AStatus: IStatus;

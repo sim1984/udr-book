@@ -4,7 +4,7 @@
     xmlns:xlink="http://www.w3.org/1999/xlink" version="5.0" xml:id="udr" xml:lang="ru">
     <info>
         <title>Написание UDR Firebird на Pascal</title>
-        <edition>28 февраля 2019 — 0.47 Alpha</edition>
+        <edition>10 марта 2019 — 0.48 Alpha</edition>
         
         <authorgroup>
             <author>
@@ -23,6 +23,7 @@
     <xi:include href="psql.xml" xpointer="element(/1)"/> 
     <xi:include href="framework.xml" xpointer="element(/1)"/> 
     <xi:include href="messages.xml" xpointer="element(/1)"/> 
+    <xi:include href="factories.xml" xpointer="element(/1)"/> 
     <xi:include href="blob.xml" xpointer="element(/1)"/> 
     <xi:include href="contexts.xml" xpointer="element(/1)"/> 
     

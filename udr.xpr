@@ -124,6 +124,7 @@
         </options>
     </meta>
     <projectTree name="udr.xpr">
+        <file name="blob.xml"/>
         <file name="contexts.xml"/>
         <file name="factories.xml"/>
         <file name="framework.xml"/>

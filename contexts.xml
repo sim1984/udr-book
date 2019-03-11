@@ -5,7 +5,7 @@
   </info>
 
   <para>Если ваша внешняя процедура, функция или триггер должна получать данные из собственной базы
-    данных не через входные аргументы, а например через запрос, то вам поребуется получать контекст
+    данных не через входные аргументы, а например через запрос, то вам потребуется получать контекст
     текущего соединения и/или транзакции. Кроме того, контекст соединения и транзакции необходим
     если вы будете работать с типом BLOB.</para>
   <para>Контекст выполнения текущей процедуры, функции или триггера передаётся в качестве параметра
@@ -13,16 +13,16 @@
     триггера или функции, или в метод <methodname>open</methodname> процедуры. Интерфейс
       <interfacename>IExternalContext</interfacename> позволяет получить текущее соединение с
     помощью метода <methodname>getAttachment</methodname>, и текущую транзакцию с помощью метода
-      <methodname>getTransaction</methodname>. Это даёт боьшую гибкость вашим UDR, например вы
-    можете выполнять запросы к текущей базе данных с сохранением текущего сессионого окружения, в
+      <methodname>getTransaction</methodname>. Это даёт большую гибкость вашим UDR, например вы
+    можете выполнять запросы к текущей базе данных с сохранением текущего сессионного окружения, в
     той же транзакции или в новой транзакции, созданной с помощью метода
       <methodname>startTransaction</methodname> интерфейса
       <interfacename>IExternalContext</interfacename>. В последнем случае запрос будет выполнен так
-    как будето он выполняется в автономной транзакции. Кроме того, вы можете выполнить запрос к
-    внешней базе данных с ипользованием транзакции присоединённой к текущей транзакции, т.е.
+    как будто он выполняется в автономной транзакции. Кроме того, вы можете выполнить запрос к
+    внешней базе данных с использованием транзакции присоединённой к текущей транзакции, т.е.
     транзакции с двухфазным подтверждением (2PC).</para>
-  <para>В качестве примера работы с контекстом выполнения функции напишем функцю которая будет
-    сериализовать результат выполения SELECT запроса в формате JSON. Она объявлена следующим
+  <para>В качестве примера работы с контекстом выполнения функции напишем функцию, которая будет
+    сериализовать результат выполнения SELECT запроса в формате JSON. Она объявлена следующим
     образом: <programlisting language="sql">
 <![CDATA[ 
 create function GetJson (
@@ -35,10 +35,10 @@ engine udr;
             </programlisting>
   </para>
   <para>Поскольку мы позволяем выполнять произвольный SQL запрос, то мы не знаем заранее формат
-    выходных полей, и мы не сможем использовать структуру с фисированными полями. В этом случае нам
-    придётся работать с интерфейсом <interfacename>IMessageMetadata</interfacename>. Вы уже
+    выходных полей, и мы не сможем использовать структуру с фиксированными полями. В этом случае нам
+    придётся работать с интерфейсом <interfacename>IMessageMetadata</interfacename>. Мы уже
     сталкивались с ним ранее, но на этот раз придётся работать с ним более основательно, поскольку
-    мы должны обрабатывать все существующи типы Firebird.</para>
+    мы должны обрабатывать все существующие типы Firebird.</para>
   <note>
     <para>В JSON можно закодировать практически любые типы данных кроме бинарных. Для кодирования
       типов CHAR, VARCHAR с OCTETS NONE и BLOB SUB_TYPE BINARY будем кодировать бинарное содержимое
@@ -115,7 +115,7 @@ type
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
       AName: PAnsiChar; ANameSize: Cardinal); override;
 
-    { Преобразует целое в строку в соответсвии с масштабом
+    { Преобразует целое в строку в соответствии с масштабом
 
       @param(AValue Значение)
       @param(Scale Масштаб)
@@ -129,7 +129,7 @@ type
       @param(AContext Контекст выполнения внешней функции)
       @param(AJson Массив объектов Json)
       @param(ABuffer Буфер записи)
-      @param(AMeta Метаданые курсора)
+      @param(AMeta Метаданные курсора)
       @param(AFormatSetting Установки формата даты и времени)
     }
     procedure writeJson(AStatus: IStatus; AContext: IExternalContext;
@@ -150,7 +150,7 @@ type
             </programlisting>
   </para>
   <para>Дополнительный метод <methodname>MakeScaleInteger</methodname> предназначен для
-    преоьразование масштабируемых чисел в строку, метод <methodname>writeJson</methodname> кодирует
+    преобразования масштабируемых чисел в строку, метод <methodname>writeJson</methodname> кодирует
     очередную запись выбранную из курсора в Json объект и добавляет его в массив таких объектов. Эти
     методы мы опишем позже, а пока приведём основной метод <methodname>execute</methodname> для
     выполнения внешней функции. <programlisting language="delphi">
@@ -206,7 +206,7 @@ begin
       xInput.SqlDialect, IStatement.PREPARE_PREFETCH_METADATA);
     // получаем выходные метаданные курсора
     cursorMetaData := stmt.getOutputMetadata(AStatus);
-    // откурываем курсор
+    // открываем курсор
     rs := stmt.openCursor(AStatus, tra, nil, nil, nil, 0);
     // выделяем буфер нужного размера
     msgLen := cursorMetaData.getMessageLength(AStatus);
@@ -248,7 +248,7 @@ end;
 ]]>    
   </programlisting>
   </para>
-  <para>Первым делом получаем из контекста выполнения функции текущее подлючение и текущую
+  <para>Первым делом получаем из контекста выполнения функции текущее подключение и текущую
     транзакцию с помощью методов <methodname>getAttachment</methodname> и
       <methodname>getTransaction</methodname> интерфейса
       <interfacename>IExternalContext</interfacename>. Затем читаем содержимое BLOB для получения
@@ -276,7 +276,7 @@ end;
     значениями полей курсора и возвращает <code>IStatus.RESULT_OK</code> до тех пор, пока записи
     курсора не кончатся. Каждая прочитанная запись передаётся в метод
       <methodname>writeJson</methodname>, который добавляет объект типа
-      <classname>TJsonObject</classname> с сериализованой записью курсора в массив
+      <classname>TJsonObject</classname> с сериализованной записью курсора в массив
       <classname>TJsonArray</classname>.</para>
   <para>После завершения работы с курсором, закрываем его методом <methodname>close</methodname>,
     преобразуем массив Json объектов в строку, пишем её в выходной поток, который записываем в
@@ -287,8 +287,8 @@ end;
     полей курсора с помощью интерфейса <interfacename>IMessageMetadata</interfacename>. Первым дело
     создаём объект тип <classname>TJsonObject</classname> в который будем записывать значения полей
     текущей записи. В качестве имён ключей будем использовать алиасы полей из курсора. Если
-    установлен NullFlag, то пишем значение null для ключа и переходим к следующему полю, в
-    противносм случае анализируем тип поля и пишем его значение в Json. <programlisting language="delphi">
+    установлен NullFlag, то пишем значение null для ключа и переходим к следующему полю, в противном
+    случае анализируем тип поля и пишем его значение в Json. <programlisting language="delphi">
 <![CDATA[
 function TJsonFunction.MakeScaleInteger(AValue: Int64; Scale: Smallint): string;
 var
@@ -525,7 +525,7 @@ begin
           begin
             // текст
             charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
-            // создаём поток с заданой кодировкой
+            // создаём поток с заданной кодировкой
             textStream := TStringStream.Create('', charset.GetCodePage);
             try
               blob.SaveToStream(AStatus, textStream);
@@ -539,7 +539,7 @@ begin
           end
           else
           begin
-            // все остальные подтипытипы считаем бинарными
+            // все остальные подтипы считаем бинарными
             binaryStream := TBytesStream.Create;
             try
               blob.SaveToStream(AStatus, binaryStream);
@@ -565,16 +565,16 @@ end;
   </programlisting>
   </para>
   <note>
-    <para>Перечисление типа TFbType отсутсвует в стандартном модуле
+    <para>Перечисление типа TFbType отсутствует в стандартном модуле
         <filename>Firebird.pas</filename>. Однако использовать числовые значения не удобно, поэтому
       я написал специальный модуль <link xmlns:xlink="http://www.w3.org/1999/xlink"
         xlink:href="https://github.com/sim1984/udr-book/blob/master/examples/Common/FbTypes.pas"
         >FbTypes</link> в котором разместил некоторые дополнительные типы для удобства.</para>
-    <para>Перечисление TFBCharSet также отсутвует в модуле <filename>Firebird.pas</filename>. Я
+    <para>Перечисление TFBCharSet также отсутствует в модуле <filename>Firebird.pas</filename>. Я
       написал отдельный модуль <link xmlns:xlink="http://www.w3.org/1999/xlink"
         xlink:href="https://github.com/sim1984/udr-book/blob/master/examples/Common/FbCharsets.pas"
         >FbCharsets</link> в котором размещено это перечисление. Кроме того, для этого типа написан
-      специальный хелпер, в котром размещены функции для получения названия набора символов, кодовой
+      специальный хелпер, в котором размещены функции для получения названия набора символов, кодовой
       страницы, размера символа в байтах, получение класса <classname>TEncoding</classname> в нужной
       кодировки, а также функцию для преобразования массива байт в юникодную строку Delphi.</para>
   </note>
@@ -594,6 +594,6 @@ end;
   <para>С типом BLOB работаем через потоки Delphi. Если BLOB бинарный, то создаём поток типа
       <classname>TBytesStream</classname>. Полученный массив байт кодируем с помощью алгоритма
     base64. Если BLOB текстовый, то используем специализированный поток
-      <classname>TStringStream</classname> для строк, котоый позволяет учесть кодовую страницу.
+      <classname>TStringStream</classname> для строк, который позволяет учесть кодовую страницу.
     Кодовую страницу мы получаем из кодировки BLOB поля.</para>
 </chapter>

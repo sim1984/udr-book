@@ -12,7 +12,7 @@
             xmlns:xlink="http://www.w3.org/1999/xlink"
             xlink:href="https://github.com/sim1984/fbapi30/releases/download/0.5/fbapi.pdf"
         />.</para>
-    <para>Подключаемые файлы для различных языков программирования, содержащие интрефейсы API, не
+    <para>Подключаемые файлы для различных языков программирования, содержащие интерфейсы API, не
         распространяются в составе Firebird. Вместо этого распространяется файл описания интерфейсов
             <filename>include/firebird/FirebirdInterface.idl</filename>. С помощью инструмента CLOOP
         на основе этого IDL файла можно сгенерировать файл интерфейсов для конкретного языка
@@ -22,7 +22,7 @@
         Firebird. Его можно найти в исходных кодах <link xmlns:xlink="http://www.w3.org/1999/xlink"
             xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/extern/cloop"/>.
         После того как инструмент будет собран, можно сгенерировать API для вашего языка
-        программирования. Для Object pascal это делается следующей коммандой:
+        программирования. Для Object pascal это делается следующей командой:
         <programlisting>
 cloop FirebirdInterface.idl pascal Firebird.pas Firebird --uses SysUtils \
   --interfaceFile Pascal.interface.pas \
@@ -65,8 +65,8 @@ cloop FirebirdInterface.idl pascal Firebird.pas Firebird --uses SysUtils \
                 <methodname>dispose()</methodname>.</para>
 
         <tip>
-            <para>Если вы не знаете как уничтожается объяет посмотрите его иерархию, если в ней есть
-                интрефейс <interfacename>IReferenceCounted</interfacename>. Для интерфейсов с
+            <para>Если вы не знаете как уничтожается объект посмотрите его иерархию, если в ней есть
+                интерфейс <interfacename>IReferenceCounted</interfacename>. Для интерфейсов с
                 подсчётом ссылок, по завершению работы с объектом необходимо уменьшить счётчик
                 ссылок вызовом метода <methodname>release()</methodname>.</para>
         </tip>

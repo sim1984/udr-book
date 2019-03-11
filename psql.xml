@@ -297,7 +297,7 @@ DROP PROCEDURE <replaceable>procname</replaceable>
                         <row>
                             <entry><replaceable>procname</replaceable></entry>
                             <entry>
-                                <para>Имя хранимой функции. Может содержать до 31 байта.</para>
+                                <para>Имя хранимой процедуры. Может содержать до 31 байта.</para>
                             </entry>
                         </row>
                         <row>
@@ -315,7 +315,7 @@ DROP PROCEDURE <replaceable>procname</replaceable>
                         <row>
                             <entry><replaceable>module name</replaceable></entry>
                             <entry>
-                                <para>Имя внешнего модуля, в котором расположена процедурв.</para>
+                                <para>Имя внешнего модуля, в котором расположена процедура.</para>
                             </entry>
                         </row>
                         <row>

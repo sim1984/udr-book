@@ -13,34 +13,65 @@
             xlink:href="https://github.com/sim1984/fbapi30/releases/download/0.5/fbapi.pdf"
         />.</para>
     <para>Подключаемые файлы для различных языков программирования, содержащие интерфейсы API, не
-        распространяются в составе Firebird. Вместо этого распространяется файл описания интерфейсов
-            <filename>include/firebird/FirebirdInterface.idl</filename>. С помощью инструмента CLOOP
-        на основе этого IDL файла можно сгенерировать файл интерфейсов для конкретного языка
-        программирования (<filename>IdlFbInterfaces.h</filename> или
-            <filename>Firebird.pas</filename>).</para>
-    <para>CLOOP — Cross Language Object Oriented Programming. Этот инструмент не входит в поставку
-        Firebird. Его можно найти в исходных кодах <link xmlns:xlink="http://www.w3.org/1999/xlink"
-            xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/extern/cloop"/>.
-        После того как инструмент будет собран, можно сгенерировать API для вашего языка
-        программирования. Для Object pascal это делается следующей командой:
-        <programlisting>
+        распространяются в составе дистрибутива Firebird под Windows, однако вы можете извлечь их из
+        распространяемых под Linux сжатых tarbar файлов (путь внутри архива
+            <filename>/opt/firebird/include/firebird/Firebird.pas</filename>). </para>
+
+    <section xml:id="fbapi-cloop">
+        <title>CLOOP</title>
+
+        <para>CLOOP — Cross Language Object Oriented Programming. Этот инструмент не входит в
+            поставку Firebird. Его можно найти в исходных кодах <link
+                xmlns:xlink="http://www.w3.org/1999/xlink"
+                xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/extern/cloop"
+            />. После того как инструмент будет собран, можно на основе файла описания интерфейсов
+                <filename>include/firebird/FirebirdInterface.idl</filename> сгенерировать API для
+            вашего языка программирования (<filename>IdlFbInterfaces.h</filename> или
+                <filename>Firebird.pas</filename>). </para>
+        <para>Для Object pascal это делается следующей командой:
+            <programlisting>
 cloop FirebirdInterface.idl pascal Firebird.pas Firebird --uses SysUtils \
   --interfaceFile Pascal.interface.pas \
   --implementationFile Pascal.implementation.pas \
   --exceptionClass FbException --prefix I \
   --functionsFile fb_get_master_interface.pas            
         </programlisting>
-        Файлы <filename>Pascal.interface.pas</filename>,
-            <filename>Pascal.implementation.pas</filename> и
-            <filename>fb_get_master_interface.pas</filename> можно найти по адресу <link
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/src/misc/pascal"
-        />. </para>
+            Файлы <filename>Pascal.interface.pas</filename>,
+                <filename>Pascal.implementation.pas</filename> и
+                <filename>fb_get_master_interface.pas</filename> можно найти по адресу <link
+                xmlns:xlink="http://www.w3.org/1999/xlink"
+                xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/src/misc/pascal"
+            />. </para>
 
-    <note>
-        <para>В данном случае для интерфейсов Firebird API будет добавлен префикс I, так как это
-            принято в Object Pascal.</para>
-    </note>
+        <note>
+            <para>В данном случае для интерфейсов Firebird API будет добавлен префикс I, так как это
+                принято в Object Pascal.</para>
+        </note>
+
+        <section xml:id="fbapi-cloop-const">
+            <title>Константы</title>
+
+            <para>В полученном файле <filename>Firebird.pas</filename> отсутствуют
+                    <code>isc_*</code> константы. Эти константы для языков C/C++ можно найти под
+                адресу <link xmlns:xlink="http://www.w3.org/1999/xlink"
+                    xlink:href="https://github.com/FirebirdSQL/firebird/blob/B3_0_Release/src/include/consts_pub.h"
+                />. Для получения констант для языка Pascal воспользуемся AWK скриптом для
+                преобразование синтаксиса. В Windows вам потребуется установить Gawk for Windows или
+                воспользоваться Windows Subsystem for Linux (доступно в Windows 10). Это делается следующей
+                командой:
+                <programlisting>
+awk -f Pascal.Constants.awk consts_pub.h > const.pas           
+        </programlisting>
+            </para>
+            <para>Содержимое полученного файла необходимо скопировать в пустую секцию const файла
+                    <filename>Firebird.pas</filename> сразу после implementation. Файл
+                    <filename>Pascal.Constants.awk</filename>, можно найти по адресу <link
+                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                    xlink:href="https://github.com/FirebirdSQL/firebird/tree/B3_0_Release/src/misc/pascal"
+                />. </para>
+        </section>
+
+    </section>
 
     <section xml:id="fbapi-livetime">
         <title>Управление временем жизни</title>
@@ -60,9 +91,9 @@ cloop FirebirdInterface.idl pascal Firebird.pas Firebird --uses SysUtils \
                 <interfacename>IMaster</interfacename>, основной интерфейс, который вызывает
             функции, доступные для остальной части API, имеет неограниченное время жизни по
             определению. Для других интерфейсов API время жизни строго определяется временем жизни
-            родительского интерфейса; интерфейс IStatus не является многопоточным. Для интерфейсов с
-            ограниченным временем жизни полезно иметь простой способ их уничтожения, то есть функцию
-                <methodname>dispose()</methodname>.</para>
+            родительского интерфейса; интерфейс <interfacename>IStatus</interfacename> не является
+            многопоточным. Для интерфейсов с ограниченным временем жизни полезно иметь простой
+            способ их уничтожения, то есть функцию <methodname>dispose()</methodname>.</para>
 
         <tip>
             <para>Если вы не знаете, как уничтожается объект, посмотрите его иерархию, если в ней

@@ -1,7 +1,7 @@
 ﻿unit UdrInit;
 
 {$IFDEF FPC}
-  {$MODE objfpc}{$H+}
+  {$MODE DELPHI}{$H+}
 {$ENDIF}
 
 interface
@@ -33,12 +33,12 @@ end;
 
 initialization
 
-myUnloadFlag := false;
+  myUnloadFlag := false;
 
 finalization
 
-if ((theirUnloadFlag <> nil) and not myUnloadFlag) then
-  theirUnloadFlag^ := true;
+  if ((theirUnloadFlag <> nil) and not myUnloadFlag) then
+    theirUnloadFlag^ := true;
 
 end.
 

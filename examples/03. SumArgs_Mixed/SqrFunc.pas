@@ -1,7 +1,7 @@
 ﻿unit SqrFunc;
 
 {$IFDEF FPC}
-{$MODE delphi}{$H+}
+{$MODE DELPHI}{$H+}
 {$DEFINE DEBUGFPC}
 {$ENDIF}
 
@@ -125,7 +125,8 @@ type
 implementation
 
 uses
-  SysUtils, FbTypes, System.TypInfo;
+  SysUtils, FbTypes {$IFNDEF FPC}, System.TypInfo{$ENDIF}
+;
 
 { TSqrFunctionFactory }
 

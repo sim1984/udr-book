@@ -1,7 +1,7 @@
 ﻿unit PlanFunc;
 
 {$IFDEF FPC}
-{$MODE objfpc}{$H+}
+{$MODE DELPHI}{$H+}
 {$DEFINE DEBUGFPC}
 {$ENDIF}
 
@@ -45,7 +45,8 @@ type
 implementation
 
 uses
-  SysUtils, Classes, FbBlob, AnsiStrings;
+  SysUtils, Classes, FbBlob {$IFNDEF FPC} , AnsiStrings {$ENDIF}
+;
 
 type
   TInput = record
@@ -108,7 +109,11 @@ begin
     plan := stmt.getPlan(AStatus, xInput.Explain);
     // пишем plan в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Plan, 0, nil);
+    {$IFDEF FPC}
+    outBlob.Write(AStatus, plan^, StrLen(plan));
+    {$ELSE}
     outBlob.Write(AStatus, plan^, AnsiStrings.StrLen(plan));
+    {$ENDIF}
     outBlob.close(AStatus);
   finally
     if Assigned(inBlob) then

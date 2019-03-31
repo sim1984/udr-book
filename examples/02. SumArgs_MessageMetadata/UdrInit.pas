@@ -25,11 +25,6 @@ function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
 begin
   // регистрируем наши функции
   AUdrPlugin.registerFunction(AStatus, 'sum_args3', TSumArgsFunctionFactory.Create());
-  // регистрируем наши процедуры
-  //AUdrPlugin.registerProcedure(AStatus, 'gen_rows', TGenRowsFactory.create());
-  // регистриуем наши триггеры
-  //AUdrPlugin.registerTrigger(AStatus, 'replicate', TReplicateFactory.create());
-
   theirUnloadFlag := AUnloadFlagLocal;
   Result := @myUnloadFlag;
 end;

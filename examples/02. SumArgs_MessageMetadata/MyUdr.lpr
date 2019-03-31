@@ -1,4 +1,4 @@
-library PlanUtils;
+library MyUdr;
 
 {$IFDEF FPC}
   {$MODE DELPHI}{$H+}
@@ -9,13 +9,11 @@ uses
   cthreads,
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
-  UdrFactories in '..\Common\UdrFactories.pas',
-  FbBlob in '..\Common\FbBlob.pas',
+  FbTypes in '..\Common\FbTypes.pas',
   UdrInit in 'UdrInit.pas',
-  PlanFunc in 'PlanFunc.pas';
+  SumArgsFunc in 'SumArgsFunc.pas';
 
 exports firebird_udr_plugin;
 
 end.
-
 

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="11"/>
+    <BuildModes Active="Default"/>
+    <Units Count="6">
+      <Unit0>
+        <Filename Value="PlanUtils.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos X="27" Y="4"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="UdrInit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="13"/>
+        <CursorPos X="5" Y="41"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="PlanFunc.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="98"/>
+        <CursorPos X="59" Y="104"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="..\Common\Firebird.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="..\Common\UdrFactories.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="..\Common\FbBlob.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit5>
+    </Units>
+    <JumpHistory Count="10" HistoryIndex="9">
+      <Position1>
+        <Filename Value="PlanUtils.lpr"/>
+      </Position1>
+      <Position2>
+        <Filename Value="PlanUtils.lpr"/>
+        <Caret Line="5" Column="44"/>
+      </Position2>
+      <Position3>
+        <Filename Value="PlanUtils.lpr"/>
+        <Caret Line="4" Column="27"/>
+      </Position3>
+      <Position4>
+        <Filename Value="PlanFunc.pas"/>
+        <Caret Line="83" Column="46" TopLine="73"/>
+      </Position4>
+      <Position5>
+        <Filename Value="PlanFunc.pas"/>
+        <Caret Line="59" Column="3" TopLine="43"/>
+      </Position5>
+      <Position6>
+        <Filename Value="PlanFunc.pas"/>
+        <Caret Line="81" Column="39" TopLine="73"/>
+      </Position6>
+      <Position7>
+        <Filename Value="PlanFunc.pas"/>
+        <Caret Line="89" Column="8" TopLine="73"/>
+      </Position7>
+      <Position8>
+        <Filename Value="PlanUtils.lpr"/>
+        <Caret Line="4" Column="27"/>
+      </Position8>
+      <Position9>
+        <Filename Value="PlanFunc.pas"/>
+        <Caret Line="82" Column="35" TopLine="81"/>
+      </Position9>
+      <Position10>
+        <Filename Value="PlanUtils.lpr"/>
+        <Caret Line="4" Column="27"/>
+      </Position10>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes Count="0" ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

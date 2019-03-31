@@ -1,14 +1,12 @@
 library MyUdr;
 
 {$IFDEF FPC}
-  {$MODE objfpc}{$H+}
+  {$MODE DELPHI}{$H+}
 {$ENDIF}
 
 uses
 {$IFDEF unix}
     cthreads,
-    // the c memory manager is on some systems much faster for multi-threading
-    cmem,
 {$ENDIF}
   Firebird in '../Common/Firebird.pas',
   UdrInit in 'UdrInit.pas',

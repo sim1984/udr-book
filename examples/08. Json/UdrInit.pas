@@ -1,7 +1,7 @@
 ﻿unit UdrInit;
 
 {$IFDEF FPC}
-  {$MODE objfpc}{$H+}
+  {$MODE DELPHI}{$H+}
 {$ENDIF}
 
 interface

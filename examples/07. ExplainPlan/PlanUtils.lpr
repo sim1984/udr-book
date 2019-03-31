@@ -18,4 +18,3 @@ exports firebird_udr_plugin;
 
 end.
 
-

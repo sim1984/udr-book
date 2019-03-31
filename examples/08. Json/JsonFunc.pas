@@ -11,14 +11,14 @@ uses
   FbTypes,
   FbCharsets,
   SysUtils,
-  {$IFDEF FPC}
+{$IFDEF FPC}
   fpjson,
   base64
-  {$ELSE}
+{$ELSE}
   System.NetEncoding,
   System.Json
-  {$ENDIF}
-;
+{$ENDIF}
+    ;
 
 // *********************************************************
 // create function GetJson (
@@ -92,8 +92,7 @@ implementation
 uses
   Classes, FbBlob;
 
-
-  { TJsonFunction }
+{ TJsonFunction }
 
 procedure TJsonFunction.dispose;
 begin
@@ -128,20 +127,20 @@ begin
   end;
   xOutput.NullFlag := False;
   // установки форматирования даты и времени
-  {$IFNDEF FPC}
+{$IFNDEF FPC}
   xFormatSettings := TFormatSettings.Create;
-  {$ELSE}
+{$ELSE}
   xFormatSettings := DefaultFormatSettings;
-  {$ENDIF}
+{$ENDIF}
   xFormatSettings.DateSeparator := '-';
   xFormatSettings.TimeSeparator := ':';
   // создаём поток байт для чтения blob
   inStream := TBytesStream.Create(nil);
-  {$IFNDEF FPC}
+{$IFNDEF FPC}
   outStream := TStringStream.Create('', 65001);
-  {$ELSE}
+{$ELSE}
   outStream := TStringStream.Create('');
-  {$ENDIF}
+{$ENDIF}
   jsonArray := TJsonArray.Create;
   // получение текущего соединения и транзакции
   att := AContext.getAttachment(AStatus);
@@ -169,7 +168,8 @@ begin
       while rs.fetchNext(AStatus, msg) = IStatus.RESULT_OK do
       begin
         // и пишем её в JSON
-        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData, xFormatSettings);
+        writeJson(AStatus, AContext, jsonArray, msg, cursorMetaData,
+          xFormatSettings);
       end;
     finally
       // освобождаем буфер
@@ -178,12 +178,11 @@ begin
     // закрываем курсор
     rs.close(AStatus);
     // пишем JSON в поток
-    {$IFNDEF FPC}
+{$IFNDEF FPC}
     outStream.WriteString(jsonArray.ToJSON);
-    {$ELSE}
+{$ELSE}
     outStream.WriteString(jsonArray.AsJSON);
-    {$ENDIF}
-
+{$ENDIF}
     // пишем json в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Json, 0, nil);
     outBlob.LoadFromStream(AStatus, outStream);
@@ -251,17 +250,15 @@ var
   hours, minutes, seconds, fractions: Cardinal;
   blobId: ISC_QUADPtr;
   BlobSubtype: Smallint;
+  att: IAttachment;
+  tra: ITransaction;
   blob: IBlob;
   textStream: TStringStream;
   binaryStream: TBytesStream;
-  {$IFDEF FPC}
+{$IFDEF FPC}
   base64Stream: TBase64EncodingStream;
-  {$ENDIF}
-  att: IAttachment;
-  tra: ITransaction;
-  {$IFDEF FPC}
   xFloatJson: TJSONFloatNumber;
-  {$ENDIF}
+{$ENDIF}
 begin
   // Получаем IUtil
   util := AContext.getMaster().getUtilInterface();
@@ -276,11 +273,11 @@ begin
     if NullFlag then
     begin
       // если NULL пишем его в JSON и переходим к следующему полю
-      {$IFNDEF FPC}
+{$IFNDEF FPC}
       jsonObject.AddPair(FieldName, TJsonNull.Create);
-      {$ELSE}
+{$ELSE}
       jsonObject.Add(FieldName, TJsonNull.Create);
-      {$ENDIF}
+{$ENDIF}
       continue;
     end;
     // получаем указатель на данные поля
@@ -297,17 +294,17 @@ begin
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
           begin
-          {$IFNDEF FPC}
-            StringValue := TNetEncoding.Base64.EncodeBytesToString((pData + 2),
+{$IFNDEF FPC}
+            StringValue := TNetEncoding.base64.EncodeBytesToString((pData + 2),
               charLength * charset.GetCharWidth);
-          {$ELSE}
+{$ELSE}
             // копируем данные в буфер начиная со 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
               metaLength);
             SetLength(StringValue, charLength);
             StringValue := EncodeStringBase64(StringValue);
-          {$ENDIF}
+{$ENDIF}
           end
           else
           begin
@@ -317,11 +314,11 @@ begin
               metaLength);
             SetLength(StringValue, charLength);
           end;
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
-          {$ELSE}
+{$ELSE}
           jsonObject.Add(FieldName, StringValue);
-          {$ENDIF}
+{$ENDIF}
         end;
       // CHAR
       SQL_TEXT:
@@ -332,16 +329,16 @@ begin
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
           begin
-          {$IFNDEF FPC}
-            StringValue := TNetEncoding.Base64.EncodeBytesToString((pData + 2),
+{$IFNDEF FPC}
+            StringValue := TNetEncoding.base64.EncodeBytesToString((pData + 2),
               metaLength);
-          {$ELSE}
+{$ELSE}
             Move(pData^, CharBuffer, metaLength);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
               metaLength);
             SetLength(StringValue, metaLength);
             StringValue := EncodeStringBase64(StringValue);
-          {$ENDIF}
+{$ENDIF}
           end
           else
           begin
@@ -352,32 +349,32 @@ begin
             charLength := metaLength div charset.GetCharWidth;
             SetLength(StringValue, charLength);
           end;
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
-          {$ELSE}
+{$ELSE}
           jsonObject.Add(FieldName, StringValue);
-          {$ENDIF}
+{$ENDIF}
         end;
       // FLOAT
       SQL_FLOAT:
         begin
           SingleValue := PSingle(pData)^;
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, TJSONNumber.Create(SingleValue));
-          {$ELSE}
-          jsonObject.Add(FieldName,  TJSONFloatNumber.Create(SingleValue));
-          {$ENDIF}
+{$ELSE}
+          jsonObject.Add(FieldName, TJSONFloatNumber.Create(SingleValue));
+{$ENDIF}
         end;
       // DOUBLE PRECISION
       // DECIMAL(p, s), где p = 10..15 в 1 диалекте
       SQL_DOUBLE, SQL_D_FLOAT:
         begin
           DoubleValue := PDouble(pData)^;
-          {$IFNDEF FPC}
-          jsonObject.AddPair(FieldName, TJSONNumber.Create(SingleValue));
-          {$ELSE}
-          jsonObject.Add(FieldName,  TJSONFloatNumber.Create(DoubleValue));
-          {$ENDIF}
+{$IFNDEF FPC}
+          jsonObject.AddPair(FieldName, TJSONNumber.Create(DoubleValue));
+{$ELSE}
+          jsonObject.Add(FieldName, TJSONFloatNumber.Create(DoubleValue));
+{$ENDIF}
         end;
       // INTEGER
       // NUMERIC(p, s), где p = 1..4
@@ -387,22 +384,22 @@ begin
           SmallintValue := PSmallint(pData)^;
           if (Scale = 0) then
           begin
-            {$IFNDEF FPC}
+{$IFNDEF FPC}
             jsonObject.AddPair(FieldName, TJSONNumber.Create(SmallintValue));
-            {$ELSE}
+{$ELSE}
             jsonObject.Add(FieldName, SmallintValue);
-            {$ENDIF}
+{$ENDIF}
           end
           else
           begin
             StringValue := MakeScaleInteger(SmallintValue, Scale);
-            {$IFNDEF FPC}
+{$IFNDEF FPC}
             jsonObject.AddPair(FieldName, TJSONNumber.Create(StringValue));
-            {$ELSE}
-            xFloatJson :=  TJSONFloatNumber.Create(0);
+{$ELSE}
+            xFloatJson := TJSONFloatNumber.Create(0);
             xFloatJson.AsString := StringValue;
-            jsonObject.Add(FieldName,  xFloatJson);
-            {$ENDIF}
+            jsonObject.Add(FieldName, xFloatJson);
+{$ENDIF}
           end;
         end;
       // INTEGER
@@ -414,22 +411,22 @@ begin
           IntegerValue := PInteger(pData)^;
           if (Scale = 0) then
           begin
-            {$IFNDEF FPC}
+{$IFNDEF FPC}
             jsonObject.AddPair(FieldName, TJSONNumber.Create(IntegerValue));
-            {$ELSE}
+{$ELSE}
             jsonObject.Add(FieldName, IntegerValue);
-            {$ENDIF}
+{$ENDIF}
           end
           else
           begin
             StringValue := MakeScaleInteger(IntegerValue, Scale);
-            {$IFNDEF FPC}
+{$IFNDEF FPC}
             jsonObject.AddPair(FieldName, TJSONNumber.Create(StringValue));
-            {$ELSE}
-            xFloatJson :=  TJSONFloatNumber.Create(0);
+{$ELSE}
+            xFloatJson := TJSONFloatNumber.Create(0);
             xFloatJson.AsString := StringValue;
-            jsonObject.Add(FieldName,  xFloatJson);
-            {$ENDIF}
+            jsonObject.Add(FieldName, xFloatJson);
+{$ENDIF}
           end;
         end;
       // BIGINT
@@ -441,22 +438,22 @@ begin
           BigintValue := Pint64(pData)^;
           if (Scale = 0) then
           begin
-            {$IFNDEF FPC}
+{$IFNDEF FPC}
             jsonObject.AddPair(FieldName, TJSONNumber.Create(BigintValue));
-            {$ELSE}
+{$ELSE}
             jsonObject.Add(FieldName, BigintValue);
-            {$ENDIF}
+{$ENDIF}
           end
           else
           begin
             StringValue := MakeScaleInteger(BigintValue, Scale);
-            {$IFNDEF FPC}
+{$IFNDEF FPC}
             jsonObject.AddPair(FieldName, TJSONNumber.Create(StringValue));
-            {$ELSE}
-            xFloatJson :=  TJSONFloatNumber.Create(0);
+{$ELSE}
+            xFloatJson := TJSONFloatNumber.Create(0);
             xFloatJson.AsString := StringValue;
-            jsonObject.Add(FieldName,  xFloatJson);
-            {$ENDIF}
+            jsonObject.Add(FieldName, xFloatJson);
+{$ENDIF}
           end;
         end;
       // TIMESTAMP
@@ -473,11 +470,11 @@ begin
           // форматируем дату-время по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd hh:nn:ss', DateTimeValue,
             AFormatSettings);
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
-          {$ELSE}
+{$ELSE}
           jsonObject.Add(FieldName, StringValue);
-          {$ENDIF}
+{$ENDIF}
         end;
       // DATE
       SQL_DATE:
@@ -490,11 +487,11 @@ begin
           // форматируем дату по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd', DateTimeValue,
             AFormatSettings);
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
-          {$ELSE}
+{$ELSE}
           jsonObject.Add(FieldName, StringValue);
-          {$ENDIF}
+{$ENDIF}
         end;
       // TIME
       SQL_TIME:
@@ -508,21 +505,21 @@ begin
           // форматируем время по заданному формату
           StringValue := FormatDateTime('hh:nn:ss', DateTimeValue,
             AFormatSettings);
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
-          {$ELSE}
+{$ELSE}
           jsonObject.Add(FieldName, StringValue);
-          {$ENDIF}
+{$ENDIF}
         end;
       // BOOLEAN
       SQL_BOOLEAN:
         begin
           BooleanValue := PBoolean(pData)^;
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, TJsonBool.Create(BooleanValue));
-          {$ELSE}
+{$ELSE}
           jsonObject.Add(FieldName, BooleanValue);
-          {$ENDIF}
+{$ENDIF}
         end;
       // BLOB
       SQL_BLOB, SQL_QUAD:
@@ -532,81 +529,77 @@ begin
           att := AContext.getAttachment(AStatus);
           tra := AContext.getTransaction(AStatus);
           blob := att.openBlob(AStatus, tra, blobId, 0, nil);
-          if BlobSubtype = 1 then
-          begin
-            // текст
-            charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
-            // создаём поток с заданой кодировкой
-            {$IFNDEF FPC}
-            textStream := TStringStream.Create('', charset.GetCodePage);
-            {$ELSE}
-            binaryStream := TBytesStream.Create(nil);
-            {$ENDIF}
-            try
-              {$IFNDEF FPC}
-              blob.SaveToStream(AStatus, textStream);
-              StringValue := textStream.DataString;
-              {$ELSE}
-              blob.SaveToStream(AStatus, binaryStream);
-              StringValue := TEncoding.UTF8.GetString(binaryStream.Bytes, 0, binaryStream.Size);
-              {$ENDIF}
-            finally
-              {$IFNDEF FPC}
-              textStream.Free;
-              {$ELSE}
-              binaryStream.Free;
-              {$ENDIF}
-              blob.release;
-              tra.release;
-              att.release
+          try
+            if BlobSubtype = 1 then
+            begin
+              // текст
+              charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
+              // создаём поток с заданой кодировкой
+{$IFNDEF FPC}
+              textStream := TStringStream.Create('', charset.GetCodePage);
+              try
+                blob.SaveToStream(AStatus, textStream);
+                StringValue := textStream.DataString;
+              finally
+                textStream.Free;
+              end;
+{$ELSE}
+              binaryStream := TBytesStream.Create(nil);
+              try
+                blob.SaveToStream(AStatus, binaryStream);
+                StringValue := TEncoding.UTF8.GetString(binaryStream.Bytes, 0,
+                  binaryStream.Size);
+              finally
+                binaryStream.Free;
+              end;
+{$ENDIF}
+            end
+            else
+            begin
+{$IFNDEF FPC}
+              // все остальные подтипытипы считаем бинарными
+              binaryStream := TBytesStream.Create;
+              try
+                blob.SaveToStream(AStatus, binaryStream);
+                // кодируем строку в base64
+                StringValue := TNetEncoding.base64.EncodeBytesToString
+                  (binaryStream.Memory, binaryStream.Size);
+              finally
+                binaryStream.Free;
+              end
+{$ELSE}
+              textStream := TStringStream.Create('');
+              base64Stream := TBase64EncodingStream.Create(textStream);
+              try
+                blob.SaveToStream(AStatus, base64Stream);
+                StringValue := textStream.DataString;
+              finally
+                base64Stream.Free;
+                textStream.Free;
+              end;
+{$ENDIF}
             end;
-          end
-          else
-          begin
-            {$IFNDEF FPC}
-            // все остальные подтипытипы считаем бинарными
-            binaryStream := TBytesStream.Create;
-            {$ELSE}
-            textStream := TStringStream.Create('');
-            base64Stream := TBase64EncodingStream.Create(textStream);
-            {$ENDIF}
-            try
-              {$IFNDEF FPC}
-              blob.SaveToStream(AStatus, binaryStream);
-              // кодируем строку в base64
-              StringValue := TNetEncoding.Base64.EncodeBytesToString
-                (binaryStream.Memory, binaryStream.Size);
-              {$ELSE}
-              blob.SaveToStream(AStatus, base64Stream);
-              StringValue := textStream.DataString;
-              {$ENDIF}
-            finally
-              {$IFNDEF FPC}
-              binaryStream.Free;
-              {$ELSE}
-              base64Stream.Free;
-              textStream.Free;
-              {$ENDIF}
-              blob.release;
-              tra.release;
-              att.release
-            end;
+          finally
+            blob.release;
+            tra.release;
+            att.release;
           end;
-          {$IFNDEF FPC}
+{$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
-          {$ELSE}
-          jsonObject.Add(FieldName, StringValue);
-          {$ENDIF}
+{$ELSE}
         end;
+      jsonObject.Add(FieldName, StringValue);
+{$ENDIF}
+      end;
 
-    end;
-  end;
-  // добавление записи в формате Json в массив
-  {$IFNDEF FPC}
-  AJson.AddElement(jsonObject);
-  {$ELSE}
-  AJson.Add(jsonObject);
-  {$ENDIF}
-end;
+      end;
+      end;
+      // добавление записи в формате Json в массив
+{$IFNDEF FPC}
+      AJson.AddElement(jsonObject);
+{$ELSE}
+      AJson.Add(jsonObject);
+{$ENDIF}
+      end;
 
-end.
+      end.

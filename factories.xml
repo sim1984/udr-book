@@ -1,18 +1,18 @@
 <!DOCTYPE chapter>
 <chapter xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="udr-factories" xml:lang="ru">
-    <info>
-        <title>Фабрики</title>
-    </info>
+  <info>
+    <title>Фабрики</title>
+  </info>
 
-    <para>Вы уже сталкивались с фабриками ранее. Настало время рассмотреть их более подробно.</para>
+  <para>Вы уже сталкивались с фабриками ранее. Настало время рассмотреть их более подробно.</para>
 
-    <para>Фабрики предназначены для создания экземпляров процедур, функций или триггеров. Класс
-        фабрики должен быть наследником одного из интерфейсов
-            <interfacename>IUdrProcedureFactory</interfacename>,
-            <interfacename>IUdrFunctionFactory</interfacename> или
-            <interfacename>IUdrTriggerFactory</interfacename> в зависимости от типа UDR. Их
-        экземпляры должны быть зарегистрированы в качестве точки входа UDR в функции
-            <function>firebird_udr_plugin</function>. <programlisting language="delphi">
+  <para>Фабрики предназначены для создания экземпляров процедур, функций или триггеров. Класс
+    фабрики должен быть наследником одного из интерфейсов
+      <interfacename>IUdrProcedureFactory</interfacename>,
+      <interfacename>IUdrFunctionFactory</interfacename> или
+      <interfacename>IUdrTriggerFactory</interfacename> в зависимости от типа UDR. Их экземпляры
+    должны быть зарегистрированы в качестве точки входа UDR в функции
+      <function>firebird_udr_plugin</function>. <programlisting language="delphi">
 <![CDATA[
 function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
@@ -31,23 +31,22 @@ begin
 end;
 ]]>        
       </programlisting>
-    </para>
-    <para>В данном примере класс <classname>TSumArgsFunctionFactory</classname> наследует интерфейс
-            <interfacename>IUdrFunctionFactory</interfacename>,
-            <classname>TGenRowsFactory</classname> наследует интерфейс
-            <interfacename>IUdrProcedureFactory</interfacename>, а
-            <classname>TMyTriggerFactory</classname> наследует интерфейс
-            <interfacename>IUdrTriggerFactory</interfacename>.</para>
-    <para>Экземпляры фабрик создаются и привязываются к точкам входа в момент загрузки плагинов,
-        т.е. при загрузки ядра Firebird. Это происходит один раз при создании каждого процесса
-        Firebird. Таким образом, для архитектуры SuperServer для всех соединений будет ровно один
-        экземпляр фабрики связанный с каждой точкой входа, для Classic это количество экземпляров
-        будет умножено на количество соединений.</para>
-    <para>При написании классов фабрик вам необходимо реализовать методы
-            <methodname>setup</methodname> и <methodname>newItem</methodname> из интерфейсов
-            <interfacename>IUdrProcedureFactory</interfacename>,
-            <interfacename>IUdrFunctionFactory</interfacename> или
-            <interfacename>IUdrTriggerFactory</interfacename>. <programlisting language="delphi">
+  </para>
+  <para>В данном примере класс <classname>TSumArgsFunctionFactory</classname> наследует интерфейс
+      <interfacename>IUdrFunctionFactory</interfacename>, <classname>TGenRowsFactory</classname>
+    наследует интерфейс <interfacename>IUdrProcedureFactory</interfacename>, а
+      <classname>TMyTriggerFactory</classname> наследует интерфейс
+      <interfacename>IUdrTriggerFactory</interfacename>.</para>
+  <para>Экземпляры фабрик создаются и привязываются к точкам входа в момент первой загрузки внешней
+    процедуры, функции или триггера. Это происходит один раз при создании каждого процесса Firebird.
+    Таким образом, для архитектуры SuperServer для всех соединений будет ровно один экземпляр
+    фабрики связанный с каждой точкой входа, для Classic это количество экземпляров будет умножено
+    на количество соединений.</para>
+  <para>При написании классов фабрик вам необходимо реализовать методы
+      <methodname>setup</methodname> и <methodname>newItem</methodname> из интерфейсов
+      <interfacename>IUdrProcedureFactory</interfacename>,
+      <interfacename>IUdrFunctionFactory</interfacename> или
+      <interfacename>IUdrTriggerFactory</interfacename>. <programlisting language="delphi">
 <![CDATA[
   IUdrFunctionFactory = class(IDisposable)
 	const VERSION = 3;
@@ -82,37 +81,34 @@ end;
   end;
 ]]>        
       </programlisting>
-    </para>
-    <para>Кроме того, поскольку эти интерфейсы наследуют интерфейс
-            <interfacename>IDisposable</interfacename>, то необходимо так же реализовать метод
-            <methodname>dispose</methodname>. Это обозначает что Firebird сам выгрузит фабрику,
-        когда это будет необходимо. В методе <methodname>dispose</methodname> необходимо разместить
-        код, который освобождает ресурсы, при уничтожении экземпляра фабрики. Для упрощения
-        реализации методов интерфейсов удобно воспользоваться классами
-            <classname>IUdrProcedureFactoryImpl</classname>,
-            <classname>IUdrFunctionFactoryImpl</classname>,
-            <classname>IUdrTriggerFactoryImpl</classname>. Рассмотрим каждый из методов более
-        подробно.</para>
+  </para>
+  <para>Кроме того, поскольку эти интерфейсы наследуют интерфейс
+      <interfacename>IDisposable</interfacename>, то необходимо так же реализовать метод
+      <methodname>dispose</methodname>. Это обозначает что Firebird сам выгрузит фабрику, когда это
+    будет необходимо. В методе <methodname>dispose</methodname> необходимо разместить код, который
+    освобождает ресурсы, при уничтожении экземпляра фабрики. Для упрощения реализации методов
+    интерфейсов удобно воспользоваться классами <classname>IUdrProcedureFactoryImpl</classname>,
+      <classname>IUdrFunctionFactoryImpl</classname>, <classname>IUdrTriggerFactoryImpl</classname>.
+    Рассмотрим каждый из методов более подробно.</para>
 
-    <section xml:id="udr-factories-newItem">
-        <title>Метод newItem</title>
+  <section xml:id="udr-factories-newItem">
+    <title>Метод newItem</title>
 
-        <para>Метод <methodname>newItem</methodname> вызывается для создания экземпляра внешней
+    <para>Метод <methodname>newItem</methodname> вызывается для создания экземпляра внешней
       процедуры, функции или триггера. Создание экземпляров UDR происходит в момент её загрузки в
       кэш метаданных, т.е. при первом вызове процедуры, функции или триггера. В настоящий момент кэш
       метаданных раздельный для каждого соединения для всех архитектур сервера.</para>
 
-        <para>Кэш метаданных процедур и функция связан с их именами в базе данных. Например, две
-            внешние функции с разными именами, но одинаковыми точками входа, будут разными
-            экземплярами <classname>IUdrFunctionFactory</classname>. Точка входа состоит из имени
-            внешнего модуля и имени под которым зарегистрирована фабрика. Как это можно использовать
-            покажем позже. </para>
+    <para>Кэш метаданных процедур и функция связан с их именами в базе данных. Например, две внешние
+      функции с разными именами, но одинаковыми точками входа, будут разными экземплярами
+        <classname>IUdrFunctionFactory</classname>. Точка входа состоит из имени внешнего модуля и
+      имени под которым зарегистрирована фабрика. Как это можно использовать покажем позже. </para>
 
-        <para>В метод <methodname>newItem</methodname> передаётся указатель на статус вектор,
-            контекст выполнения UDR и метаданные UDR.</para>
+    <para>В метод <methodname>newItem</methodname> передаётся указатель на статус вектор, контекст
+      выполнения UDR и метаданные UDR.</para>
 
-        <para>В простейшем случае реализация этого метода тривиальна
-            <programlisting language="delphi">
+    <para>В простейшем случае реализация этого метода тривиальна
+      <programlisting language="delphi">
 function TSumArgsFunctionFactory.newItem(AStatus: IStatus; 
   AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
 begin
@@ -120,13 +116,13 @@ begin
   Result := TSumArgsFunction.Create();
 end;                
                 </programlisting>
-        </para>
+    </para>
 
-        <para>С помощью <interfacename>IRoutineMetadata</interfacename> вы можете получить формат
-            входного и выходного сообщения, тело UDR и другие метаданные. Метаданные можно передать
-            в созданный экземпляр UDR. В этом случае в экземпляр класса реализующего вашу UDR
-            необходимо добавить поле для хранение метаданных.
-            <programlisting language="delphi">
+    <para>С помощью <interfacename>IRoutineMetadata</interfacename> вы можете получить формат
+      входного и выходного сообщения, тело UDR и другие метаданные. Метаданные можно передать в
+      созданный экземпляр UDR. В этом случае в экземпляр класса реализующего вашу UDR необходимо
+      добавить поле для хранение метаданных.
+      <programlisting language="delphi">
   // Внешняя функция TSumArgsFunction.
   TSumArgsFunction = class(IExternalFunctionImpl)
   private
@@ -137,11 +133,11 @@ end;
   ...
   end;
                 </programlisting>
-        </para>
+    </para>
 
-        <para>В этом случае реализация метода <methodname>newItem</methodname> выглядит следующим
-            образом:
-            <programlisting language="delphi">
+    <para>В этом случае реализация метода <methodname>newItem</methodname> выглядит следующим
+      образом:
+      <programlisting language="delphi">
 function TSumArgsFunctionFactory.newItem(AStatus: IStatus;
   AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
 begin
@@ -152,18 +148,18 @@ begin
   end;
 end;
                 </programlisting>
-        </para>
+    </para>
 
-        <section>
-            <title>Создание экземпляров UDR в зависимости от их объявления</title>
+    <section>
+      <title>Создание экземпляров UDR в зависимости от их объявления</title>
 
-            <para>В методе <methodname>newItem</methodname> вы можете создавать различные экземпляры
-                внешней процедуры или функции в зависимости от её объявления в PSQL. Для этого можно
-                использовать информацию полученную из
-                    <interfacename>IMessageMetadata</interfacename>.</para>
+      <para>В методе <methodname>newItem</methodname> вы можете создавать различные экземпляры
+        внешней процедуры или функции в зависимости от её объявления в PSQL. Для этого можно
+        использовать информацию полученную из
+        <interfacename>IMessageMetadata</interfacename>.</para>
 
-            <para>Допустим мы хотим реализовать PSQL пакет с однотипным набором внешних функций для
-                возведения числа в квадрат под различные типы данных и единой точкой входа. <programlisting language="sql">  
+      <para>Допустим мы хотим реализовать PSQL пакет с однотипным набором внешних функций для
+        возведения числа в квадрат под различные типы данных и единой точкой входа. <programlisting language="sql">  
 <![CDATA[
 SET TERM ^ ;
 
@@ -206,9 +202,9 @@ end
 SET TERM ; ^
 ]]>
                 </programlisting>
-            </para>
-            <para>Для проверки функций будем использовать следующий запрос
-                <programlisting language="sql">  
+      </para>
+      <para>Для проверки функций будем использовать следующий запрос
+        <programlisting language="sql">  
 select
   myudr2.SqrSmallint(1) as n1,
   myudr2.SqrInteger(2) as n2,
@@ -217,16 +213,16 @@ select
   myudr2.SqrDouble(3.2) as n5
 from rdb$database
                 </programlisting>
-            </para>
+      </para>
 
-            <para>Для упрощения работы с <interfacename>IMessageMetadata</interfacename> и буферами
-                можно написать удобную обёртку или попробовать совместно использовать
-                    <interfacename>IMessageMetadata</interfacename> и структуры для отображения
-                сообщений. Здесь мы покажем использование второго способа.</para>
+      <para>Для упрощения работы с <interfacename>IMessageMetadata</interfacename> и буферами можно
+        написать удобную обёртку или попробовать совместно использовать
+          <interfacename>IMessageMetadata</interfacename> и структуры для отображения сообщений.
+        Здесь мы покажем использование второго способа.</para>
 
-            <para>Реализация такой идея достаточно проста: в фабрике функций мы будем создавать
-                различные экземпляры функций в зависимости от типа входного аргумента. В современных
-                версиях Delphi вы можете использовать дженерики для обобщения кода. <programlisting language="delphi">
+      <para>Реализация такой идея достаточно проста: в фабрике функций мы будем создавать различные
+        экземпляры функций в зависимости от типа входного аргумента. В современных версиях Delphi вы
+        можете использовать дженерики для обобщения кода. <programlisting language="delphi">
 <![CDATA[  
 .......................
 type
@@ -247,7 +243,8 @@ type
     // Вызывается при уничтожении фабрики
     procedure dispose(); override;
 
-    { Выполняется каждый раз при загрузке внешней функции в кеш метаданных
+    { Выполняется каждый раз при загрузке внешней функции в кеш метаданных.
+      Используется для изменения формата входного и выходного сообщения.
 
       @param(AStatus Статус вектор)
       @param(AContext Контекст выполнения внешней функции)
@@ -449,49 +446,169 @@ end;
 .................
 ]]>
                 </programlisting>
-            </para>
-        </section>
+      </para>
     </section>
+  </section>
 
-    <section xml:id="udr-factories-setup">
-        <title>Метод setup</title>
+  <section xml:id="udr-factories-setup">
+    <title>Метод setup</title>
 
-        <note>
-            <para>Пока не написано</para>
-        </note>
-    </section>
+    <para>Метод <methodname>setup</methodname> позволяет изменить типы входных параметров и выходных
+      переменных для внешних процедур и функций или полей для триггеров. Для этого используется
+      интерфейс <interfacename>IMetadataBuilder</interfacename>, который позволяет построить входные
+      и выходные сообщения с заданными типами, размерностью и набором символов. Входные сообщения
+      будут перестроены в формат заданный в методе <methodname>setup</methodname>, а выходные
+      перестроены из формата заданного в методе <methodname>setup</methodname> в формат сообщения
+      определенного в DLL процедуры, функции или триггера. Типы полей или параметров должны быть
+      совместимы для преобразования.</para>
 
-    <section xml:id="udr-factories-generics">
-        <title>Обобщённые фабрики</title>
+    <para>Данный метод позволяет упростить создание обобщённых для разных типов параметров процедур
+      и функций путём их приведения в наиболее общий тип. Более сложный и полезный пример будет
+      рассмотрен позже, а пока немного изменим уже существующий пример внешней функции
+      SumArgs.</para>
 
-        <para>В процессе разработки UDR необходимо под каждую внешнюю процедуру, функцию или
-            триггер писать свою фабрику создающую экземпляр это UDR. Эту задачу можно упростить
-            написав обобщённые фабрики с помощью так называемых дженериков. Они доступны начиная с
-            Delphi 2009, в Free Pascal начиная с версии FPC 2.2.</para>
+    <para>Наша функция будет работать с сообщениями, которые описываются следующей структурой <programlisting language="delphi">
+<![CDATA[
+type
+  // структура на которое будет отображено входное сообщение
+  TSumArgsInMsg = record
+    n1: Integer;
+    n1Null: WordBool;
+    n2: Integer;
+    n2Null: WordBool;
+    n3: Integer;
+    n3Null: WordBool;
+  end;
 
-        <note>
-            <para>В Free Pascal синтаксис создания обобщённых типов отличается от Delphi. Начиная с
-                версии FPC 2.6.0 декларируется совместимый с Delphi синтаксис.</para>
-        </note>
+  PSumArgsInMsg = ^TSumArgsInMsg;
 
-        <para>Рассмотрим два основных случая для которых будут написаны обобщённые фабрики: <itemizedlist>
-                <listitem>
-                    <para>экземплярам внешних процедур, функций и триггеров не требуются какие либо
-                        сведения о метаданных, не нужны специальные действия в логике создания
-                        экземпляров UDR, для работы с сообщениями используются фиксированные
-                        структуры;</para>
-                </listitem>
-                <listitem>
-                    <para>экземплярам внешних процедур, функций и триггеров требуются сведения о
-                        метаданных, не нужны специальные действия в логике создания экземпляров UDR,
-                        для работы с сообщениями используются экземпляры интерфейсов
-                            <interfacename>IMessageMetadata</interfacename>. </para>
-                </listitem>
-            </itemizedlist></para>
+  // структура на которое будет отображено выходное сообщение
+  TSumArgsOutMsg = record
+    result: Integer;
+    resultNull: WordBool;
+  end;
 
-        <para>В первом случае достаточно просто создавать нужный экземпляр класса в методе newItem
-      без дополнительных действий. для этого воспользуемся ограничением конструктора в классах
-      потомках классов <classname>IUdrFunctionFactoryImpl</classname>,
+  PSumArgsOutMsg = ^TSumArgsOutMsg;
+]]>      
+    </programlisting>
+    </para>
+
+    <para>Теперь создадим фабрику функций, в методе setup которой зададим формат сообщений, которые
+      соответствуют выше приведённым структурам. <programlisting language="delphi">
+<![CDATA[
+{ TSumArgsFunctionFactory }
+
+procedure TSumArgsFunctionFactory.dispose;
+begin
+  Destroy;
+end;
+
+function TSumArgsFunctionFactory.newItem(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
+begin
+  Result := TSumArgsFunction.Create();
+end;
+
+procedure TSumArgsFunctionFactory.setup(AStatus: IStatus;
+  AContext: IExternalContext; AMetadata: IRoutineMetadata;
+  AInBuilder, AOutBuilder: IMetadataBuilder);
+begin
+  // строим сообщение для входных параметров
+  AInBuilder.setType(AStatus, 0, Cardinal(SQL_LONG));
+  AInBuilder.setLength(AStatus, 0, sizeof(Int32));
+  AInBuilder.setType(AStatus, 1, Cardinal(SQL_LONG));
+  AInBuilder.setLength(AStatus, 1, sizeof(Int32));
+  AInBuilder.setType(AStatus, 2, Cardinal(SQL_LONG));
+  AInBuilder.setLength(AStatus, 2, sizeof(Int32));
+  // строим сообщение для выходных параметров
+  AOutBuilder.setType(AStatus, 0, Cardinal(SQL_LONG));
+  AOutBuilder.setLength(AStatus, 0, sizeof(Int32));
+end;
+]]>      
+    </programlisting>
+    </para>
+
+    <para>Реализация функции тривиальна <programlisting language="delphi">
+<![CDATA[
+procedure TSumArgsFunction.execute(AStatus: IStatus; AContext: IExternalContext;
+  AInMsg, AOutMsg: Pointer);
+var
+  xInput: PSumArgsInMsg;
+  xOutput: PSumArgsOutMsg;
+begin
+  // преобразовываем указатели на вход и выход к типизированным
+  xInput := PSumArgsInMsg(AInMsg);
+  xOutput := PSumArgsOutMsg(AOutMsg);
+  // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
+  xOutput^.resultNull := True;
+  // если один из аргументов NULL значит и резултат NULL
+  // в противном случае считаем сумму аргументов
+  with xInput^ do
+  begin
+    if not(n1Null or n2Null or n3Null) then
+    begin
+      xOutput^.result := n1 + n2 + n3;
+      // раз есть результат, то сбрасываем NULL флаг
+      xOutput^.resultNull := False;
+    end;
+  end;
+end;
+]]>  
+</programlisting>
+    </para>
+
+    <para>Теперь даже если мы объявим функции следующим образом, она всё равно сохранит свою
+      работоспособность, поскольку входные и выходные сообщения будут преобразованы к тому формату.
+      что мы задали в методе setup. <programlisting language="sql">
+<![CDATA[
+create or alter function FN_SUM_ARGS (
+    N1 varchar(15),
+    N2 varchar(15),
+    N3 varchar(15))
+returns varchar(15)
+EXTERNAL NAME 'MyUdrSetup!sum_args'
+ENGINE UDR;
+]]>      
+    </programlisting>
+    </para>
+    <para>Вы можете проверить вышеприведённое утверждение выполнив следующий запрос <programlisting language="sql">
+<![CDATA[
+select FN_SUM_ARGS('15', '21', '35') from rdb$database
+]]>
+    </programlisting>
+    </para>
+  </section>
+
+  <section xml:id="udr-factories-generics">
+    <title>Обобщённые фабрики</title>
+
+    <para>В процессе разработки UDR необходимо под каждую внешнюю процедуру, функцию или триггер
+      писать свою фабрику создающую экземпляр это UDR. Эту задачу можно упростить написав обобщённые
+      фабрики с помощью так называемых дженериков. Они доступны начиная с Delphi 2009, в Free Pascal
+      начиная с версии FPC 2.2.</para>
+
+    <note>
+      <para>В Free Pascal синтаксис создания обобщённых типов отличается от Delphi. Начиная с версии
+        FPC 2.6.0 декларируется совместимый с Delphi синтаксис.</para>
+    </note>
+
+    <para>Рассмотрим два основных случая для которых будут написаны обобщённые фабрики: <itemizedlist>
+        <listitem>
+          <para>экземплярам внешних процедур, функций и триггеров не требуются какие либо сведения о
+            метаданных, не нужны специальные действия в логике создания экземпляров UDR, для работы
+            с сообщениями используются фиксированные структуры;</para>
+        </listitem>
+        <listitem>
+          <para>экземплярам внешних процедур, функций и триггеров требуются сведения о метаданных,
+            не нужны специальные действия в логике создания экземпляров UDR, для работы с
+            сообщениями используются экземпляры интерфейсов
+              <interfacename>IMessageMetadata</interfacename>. </para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>В первом случае достаточно просто создавать нужный экземпляр класса в методе newItem без
+      дополнительных действий. для этого воспользуемся ограничением конструктора в классах потомках
+      классов <classname>IUdrFunctionFactoryImpl</classname>,
         <classname>IUdrProcedureFactoryImpl</classname>,
         <classname>IUdrTriggerFactoryImpl</classname>. Объявления таких фабрик выглядит следующим
       образом: <programlisting language="delphi">
@@ -548,10 +665,10 @@ type
 ]]>        
       </programlisting>
     </para>
-        <para>В секции реализации тело метода <methodname>setup</methodname> можно оставить пустым,
-            в них ничего не делается, в теле метода <methodname>dispose</methodname> просто вызвать
-            деструктор. А в теле метода <methodname>newItem</methodname> необходимо просто вызвать
-            конструктор по умолчанию для подстановочного типа <classname>T</classname>. <programlisting language="delphi">
+    <para>В секции реализации тело метода <methodname>setup</methodname> можно оставить пустым, в
+      них ничего не делается, в теле метода <methodname>dispose</methodname> просто вызвать
+      деструктор. А в теле метода <methodname>newItem</methodname> необходимо просто вызвать
+      конструктор по умолчанию для подстановочного типа <classname>T</classname>. <programlisting language="delphi">
 <![CDATA[
 implementation
 
@@ -617,9 +734,9 @@ begin
 end;
 ]]>        
       </programlisting>
-        </para>
-        <para>Теперь для случая 1 можно не писать фабрики под каждую процедуру, функцию или триггер.
-            Вместо этого регистрировать их с помощью обобщённых фабрик следующим образом: <programlisting language="delphi">
+    </para>
+    <para>Теперь для случая 1 можно не писать фабрики под каждую процедуру, функцию или триггер.
+      Вместо этого регистрировать их с помощью обобщённых фабрик следующим образом: <programlisting language="delphi">
 <![CDATA[
 function firebird_udr_plugin(AStatus: IStatus; AUnloadFlagLocal: BooleanPtr;
   AUdrPlugin: IUdrPlugin): BooleanPtr; cdecl;
@@ -638,15 +755,15 @@ begin
   Result := @myUnloadFlag;
 end;
 ]]>        
-      </programlisting>Второй случай более сложный. По умолчанию сведения о метаданных не
-            передаются в экземпляры процедур, функций и триггеров. Однако метаданных передаются в
-            качестве параметра в методе <methodname>newItem</methodname> фабрик. Метаданные UDR
-            имеют тип <interfacename>IRoutineMetadata</interfacename>, жизненный цикл которого
-            контролируется самим движком Firebird, поэтому его можно смело передавать в экземпляры
-            UDR. Из него можно получить экземпляры интерфейсов для входного и выходного сообщения,
-            метаданные и тип триггера, имя UDR, пакета, точки входа и тело UDR. Сами классы для
-            реализаций внешних процедур, функций и триггеров не имеют полей для хранения метаданных,
-            поэтому нам придётся сделать своих наследников. <programlisting language="delphi">
+      </programlisting>Второй случай более сложный. По умолчанию сведения о метаданных
+      не передаются в экземпляры процедур, функций и триггеров. Однако метаданных передаются в
+      качестве параметра в методе <methodname>newItem</methodname> фабрик. Метаданные UDR имеют тип
+        <interfacename>IRoutineMetadata</interfacename>, жизненный цикл которого контролируется
+      самим движком Firebird, поэтому его можно смело передавать в экземпляры UDR. Из него можно
+      получить экземпляры интерфейсов для входного и выходного сообщения, метаданные и тип триггера,
+      имя UDR, пакета, точки входа и тело UDR. Сами классы для реализаций внешних процедур, функций
+      и триггеров не имеют полей для хранения метаданных, поэтому нам придётся сделать своих
+      наследников. <programlisting language="delphi">
 <![CDATA[
 unit UdrFactories;
 
@@ -677,10 +794,10 @@ type
   end;
 ]]>        
       </programlisting>
-        </para>
-        <para>В этом случае ваши собственные хранимые процедуры, функции и триггеры должны быть
-            унаследованы от новых классов с метаданными.</para>
-        <para>Теперь объявим фабрики которые будут создавать UDR и инициализировать метаданные. <programlisting language="delphi">
+    </para>
+    <para>В этом случае ваши собственные хранимые процедуры, функции и триггеры должны быть
+      унаследованы от новых классов с метаданными.</para>
+    <para>Теперь объявим фабрики которые будут создавать UDR и инициализировать метаданные. <programlisting language="delphi">
 <![CDATA[
 unit UdrFactories;
 
@@ -735,8 +852,8 @@ type
 ]]>        
       </programlisting>
     </para>
-        <para>Реализация метода <methodname>newItem</methodname> тривиальна и похожа на первый
-            случай, за исключением того, что необходимо инициализировать поле с метаданными. <programlisting language="delphi">
+    <para>Реализация метода <methodname>newItem</methodname> тривиальна и похожа на первый случай,
+      за исключением того, что необходимо инициализировать поле с метаданными. <programlisting language="delphi">
 <![CDATA[
 implementation
 ...
@@ -804,11 +921,11 @@ begin
 end;
 ]]>        
       </programlisting>
-        </para>
+    </para>
 
-        <para>Готовый модуль с обобщёнными фабриками можно скачать по адресу <link
-                xmlns:xlink="http://www.w3.org/1999/xlink"
-                xlink:href="https://github.com/sim1984/udr-book/blob/master/examples/Common/UdrFactories.pas"
-                >https://github.com/sim1984/udr-book/blob/master/examples/Common/UdrFactories.pas</link>.</para>
-    </section>
+    <para>Готовый модуль с обобщёнными фабриками можно скачать по адресу <link
+        xmlns:xlink="http://www.w3.org/1999/xlink"
+        xlink:href="https://github.com/sim1984/udr-book/blob/master/examples/Common/UdrFactories.pas"
+        >https://github.com/sim1984/udr-book/blob/master/examples/Common/UdrFactories.pas</link>.</para>
+  </section>
 </chapter>

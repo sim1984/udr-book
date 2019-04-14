@@ -6,7 +6,7 @@ library BlobSplit;
 
 uses
   {$IFDEF unix}
-  cmem, cthreads,
+  cthreads, cmem,
   {$ENDIF }
   Firebird in '../Common/Firebird.pas',
   FbTypes in '../Common/FbTypes.pas',

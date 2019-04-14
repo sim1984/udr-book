@@ -8,6 +8,7 @@
       <Unit0>
         <Filename Value="BlobSplit.lpr"/>
         <IsPartOfProject Value="True"/>
+        <CursorPos X="3" Y="9"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>
@@ -15,9 +16,11 @@
       <Unit1>
         <Filename Value="UdrInit.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
+        <EditorIndex Value="2"/>
         <CursorPos X="28" Y="8"/>
         <UsageCount Value="37"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Delphi"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\Common\Firebird.pas"/>
@@ -32,8 +35,8 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="72"/>
-        <CursorPos X="71" Y="143"/>
+        <TopLine Value="4"/>
+        <CursorPos X="27" Y="37"/>
         <UsageCount Value="34"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>

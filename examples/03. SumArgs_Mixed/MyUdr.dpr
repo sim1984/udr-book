@@ -6,7 +6,7 @@ library MyUdr;
 
 uses
   {$IFDEF unix}
-  cthreads,
+  cthreads, cmem,
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
   FbTypes in '..\Common\FbTypes.pas',
@@ -15,6 +15,6 @@ uses
 
 exports firebird_udr_plugin;
 
+begin
+  IsMultiThread := true;
 end.
-
-

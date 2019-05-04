@@ -12,6 +12,6 @@ uses
 
 exports firebird_udr_plugin;
 
+begin
+  IsMultiThread := true;
 end.
-
-

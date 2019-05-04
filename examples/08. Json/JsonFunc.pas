@@ -227,6 +227,7 @@ var
   i: Integer;
   FieldName: string;
   NullFlag: WordBool;
+  fieldType: TFBType;
   pData: PByte;
   util: IUtil;
   metaLength: Integer;
@@ -282,7 +283,9 @@ begin
     end;
     // получаем указатель на данные поля
     pData := ABuffer + AMeta.getOffset(AStatus, i);
-    case TFBType(AMeta.getType(AStatus, i)) of
+    // аналог AMeta->getType(AStatus, i) & ~1
+	  fieldType := TFBType(AMeta.getType(AStatus, i) and not 1);
+    case fieldType of
       // VARCHAR
       SQL_VARYING:
         begin

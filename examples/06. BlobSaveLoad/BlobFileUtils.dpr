@@ -6,7 +6,7 @@ library BlobFileUtils;
 
 uses
   {$IFDEF unix}
-  cthreads,
+  cthreads, cmem,
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
   UdrInit in 'UdrInit.pas',
@@ -15,4 +15,6 @@ uses
 
 exports firebird_udr_plugin;
 
+begin
+  IsMultiThread := true;
 end.

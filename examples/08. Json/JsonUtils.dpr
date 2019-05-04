@@ -6,7 +6,7 @@ library JsonUtils;
 
 uses
   {$IFDEF unix}
-  cthreads,
+  cthreads, cmem,
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
   UdrFactories in '..\Common\UdrFactories.pas',
@@ -18,6 +18,8 @@ uses
 
 exports firebird_udr_plugin;
 
+begin
+  IsMultiThread := true;
 end.
 
 

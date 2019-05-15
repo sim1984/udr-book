@@ -514,14 +514,14 @@ procedure TSumArgsFunctionFactory.setup(AStatus: IStatus;
   AInBuilder, AOutBuilder: IMetadataBuilder);
 begin
   // строим сообщение для входных параметров
-  AInBuilder.setType(AStatus, 0, Cardinal(SQL_LONG));
+  AInBuilder.setType(AStatus, 0, SQL_LONG + 1);
   AInBuilder.setLength(AStatus, 0, sizeof(Int32));
-  AInBuilder.setType(AStatus, 1, Cardinal(SQL_LONG));
+  AInBuilder.setType(AStatus, 1, SQL_LONG + 1);
   AInBuilder.setLength(AStatus, 1, sizeof(Int32));
-  AInBuilder.setType(AStatus, 2, Cardinal(SQL_LONG));
+  AInBuilder.setType(AStatus, 2, SQL_LONG + 1);
   AInBuilder.setLength(AStatus, 2, sizeof(Int32));
   // строим сообщение для выходных параметров
-  AOutBuilder.setType(AStatus, 0, Cardinal(SQL_LONG));
+  AOutBuilder.setType(AStatus, 0, SQL_LONG + 1);
   AOutBuilder.setLength(AStatus, 0, sizeof(Int32));
 end;
 ]]>      

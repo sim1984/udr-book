@@ -139,11 +139,12 @@ function TSqrFunctionFactory.newItem(AStatus: IStatus;
   AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalFunction;
 var
   xInputMetadata: IMessageMetadata;
-  xInputType: TFBType;
+  xInputType: Cardinal;
 begin
   // олучаем тип входного аргумента
   xInputMetadata := AMetadata.getInputMetadata(AStatus);
-  xInputType := TFBType(xInputMetadata.getType(AStatus, 0));
+  // аналог AMeta->getType(AStatus, i) & ~1
+  xInputType := xInputMetadata.getType(AStatus, 0) and not 1;
   xInputMetadata.release;
   // создаём экземпляр функции в зависимости от типа
   case xInputType of

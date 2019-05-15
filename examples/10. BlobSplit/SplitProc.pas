@@ -257,15 +257,15 @@ procedure TSplitProcedureFactory.setup(AStatus: IStatus;
   AOutBuilder: IMetadataBuilder);
 begin
   // входной BLOB
-  AInBuilder.setType(AStatus, 0, Cardinal(SQL_QUAD));
+  AInBuilder.setType(AStatus, 0, SQL_BLOB + 1);
   AInBuilder.setSubType(AStatus, 0, 1);
   AInBuilder.setCharSet(AStatus, 0, Cardinal(CS_UTF8));
   // разделитель
-  AInBuilder.setType(AStatus, 1, Cardinal(SQL_VARYING));
+  AInBuilder.setType(AStatus, 1, SQL_VARYING + 1);
   AInBuilder.setCharSet(AStatus, 1, Cardinal(CS_UTF8));
   AInBuilder.setLength(AStatus, 1, 4 * 8);
   // выходная строка
-  AOutBuilder.setType(AStatus, 0, Cardinal(SQL_VARYING));
+  AOutBuilder.setType(AStatus, 0, SQL_VARYING + 1);
   AOutBuilder.setCharSet(AStatus, 0, Cardinal(CS_UTF8));
   AOutBuilder.setLength(AStatus, 0, 4 * 8191);
 end;

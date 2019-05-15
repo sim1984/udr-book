@@ -227,7 +227,7 @@ var
   i: Integer;
   FieldName: string;
   NullFlag: WordBool;
-  fieldType: TFBType;
+  fieldType: Cardinal;
   pData: PByte;
   util: IUtil;
   metaLength: Integer;
@@ -284,7 +284,7 @@ begin
     // получаем указатель на данные поля
     pData := ABuffer + AMeta.getOffset(AStatus, i);
     // аналог AMeta->getType(AStatus, i) & ~1
-	  fieldType := TFBType(AMeta.getType(AStatus, i) and not 1);
+	fieldType := AMeta.getType(AStatus, i) and not 1;
     case fieldType of
       // VARCHAR
       SQL_VARYING:
@@ -301,7 +301,7 @@ begin
             StringValue := TNetEncoding.base64.EncodeBytesToString((pData + 2),
               charLength * charset.GetCharWidth);
 {$ELSE}
-            // копируем данные в буфер начиная со 3 байта
+            // копируем данные в буфер начиная с 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
               metaLength);
@@ -311,7 +311,7 @@ begin
           end
           else
           begin
-            // копируем данные в буфер начиная со 3 байта
+            // копируем данные в буфер начиная с 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
               metaLength);

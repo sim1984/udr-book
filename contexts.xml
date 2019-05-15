@@ -310,6 +310,7 @@ var
   i: Integer;
   FieldName: string;
   NullFlag: WordBool;
+  fieldType: Cardinal;
   pData: PByte;
   util: IUtil;
   metaLength: Integer;
@@ -334,10 +335,10 @@ var
   blobId: ISC_QUADPtr;
   BlobSubtype: Smallint;
   blob: IBlob;
-  textStream: TStringStream;
-  binaryStream: TBytesStream;
   att: IAttachment;
   tra: ITransaction;
+  textStream: TStringStream;
+  binaryStream: TBytesStream;
 begin
   // Получаем IUtil
   util := AContext.getMaster().getUtilInterface();
@@ -357,7 +358,9 @@ begin
     end;
     // получаем указатель на данные поля
     pData := ABuffer + AMeta.getOffset(AStatus, i);
-    case TFBType(AMeta.getType(AStatus, i)) of
+    // аналог AMeta->getType(AStatus, i) & ~1
+    fieldType := AMeta.getType(AStatus, i) and not 1;
+    case fieldType of
       // VARCHAR
       SQL_VARYING:
         begin
@@ -569,7 +572,8 @@ end;
         <filename>Firebird.pas</filename>. Однако использовать числовые значения не удобно, поэтому
       я написал специальный модуль <link xmlns:xlink="http://www.w3.org/1999/xlink"
         xlink:href="https://github.com/sim1984/udr-book/blob/master/examples/Common/FbTypes.pas"
-        >FbTypes</link> в котором разместил некоторые дополнительные типы для удобства.</para>
+        >FbTypes</link> в котором разместил некоторые дополнительные типы и константы для
+      удобства.</para>
     <para>Перечисление TFBCharSet также отсутствует в модуле <filename>Firebird.pas</filename>. Я
       написал отдельный модуль <link xmlns:xlink="http://www.w3.org/1999/xlink"
         xlink:href="https://github.com/sim1984/udr-book/blob/master/examples/Common/FbCharsets.pas"

@@ -4737,6 +4737,7 @@ const
 	isc_trace_switch_param_miss          = 337182758;
 	isc_trace_param_act_notcompat        = 337182759;
 	isc_trace_mandatory_switch_miss      = 337182760;
+
 implementation
 
 procedure IReferenceCounted.addRef();

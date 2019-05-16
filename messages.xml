@@ -514,7 +514,7 @@ unsigned getMessageLength(StatusType* status)
                 </orderedlist>
             </para>
         </section>
-        <section>
+        <section xml:id="message-imessagemetadata-usage">
             <title>Получение и использование IMessageMetadata</title>
 
             <para>Экземпляры объектов реализующих интерфейс

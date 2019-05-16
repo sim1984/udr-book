@@ -19,7 +19,7 @@
       <interfacename>IBlob</interfacename>. Запись сегмента осуществляется методом
       <methodname>putSegment</methodname> интерфейса <interfacename>IBlob</interfacename>.</para>
 
-  <section>
+  <section xml:id="udr-blob-read">
     <info>
       <title>Чтение данных из BLOB</title>
     </info>
@@ -382,7 +382,7 @@ FROM SPLIT((SELECT LIST(ID) FROM MYTABLE), ',') ids
     </note>
   </section>
 
-  <section>
+  <section xml:id="udr-blob_write">
     <info>
       <title>Запись данных в BLOB</title>
     </info>
@@ -577,8 +577,10 @@ end;
 
   </section>
 
-  <section>
-    <title>Хелпер для работы с типом BLOB</title>
+  <section xml:id="udr-blob-helper">
+    <info>
+      <title>Хелпер для работы с типом BLOB</title>
+    </info>
 
     <para>В выше описанных примерах мы использовали сохранение содержимого BLOB в поток, а также
       загрузку содержимого BLOB в поток. Это довольно частая операция при работе с типом BLOB,

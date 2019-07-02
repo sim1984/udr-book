@@ -283,19 +283,9 @@ begin
   // преобразовываем указатели на вход и выход к типизированным
   xInput := PSumArgsInMsg(AInMsg);
   xOutput := PSumArgsOutMsg(AOutMsg);
-  // по умолчанию выходной аргумент = NULL, а поэтому выставляем ему nullFlag
-  xOutput^.resultNull := True;
   // если один из аргументов NULL значит и результат NULL
-  // в противном случае считаем сумму аргументов
-  with xInput^ do
-  begin
-    if not (n1Null or n2Null or n3Null) then
-    begin
-      xOutput^.result := n1 + n2 + n3;
-      // раз есть результат, то сбрасываем NULL флаг
-      xOutput^.resultNull := False;
-    end;
-  end;  
+  xOutput^.resultNull := xInput^.n1Null or xInput^.n2Null or xInput^.n3Null;
+  xOutput^.result := xInput^.n1 + xInput^.n2 + xInput^.n3; 
 end;
 
 procedure TSumArgsFunction.getCharSet(AStatus: IStatus;
@@ -372,11 +362,9 @@ end.
       поговорим далее, а сейчас просто поясним что делалось в методе
         <methodname>execute</methodname>.</para>
     <para>Первым делом мы преобразовываем не типизированные указатели к типизированным. Для
-      выходного значение устанавливаем Null флаг в значение True (это необходимо чтобы функция
-      возвращала NULL, если один из входных аргументов равен NULL). Затем проверяем Null флаги у
-      всех входных аргументов, если ни один из входных аргументов не равен NULL, то выходное
-      значение будет равно сумме значений аргументов. Важно не забыть сбросить Null флаг выходного
-      аргумента в значение False.</para>
+      выходного значения устанавливаем Null флаг равный логическому объединению Null флагов у всех
+      входных аргументов, если ни один из входных аргументов не равен NULL, то выходное значение
+      будет равно сумме значений аргументов. </para>
   </section>
 
   <section xml:id="procedure-registration">
@@ -597,19 +585,9 @@ begin
   // преобразовываем указатели на вход и выход к типизированным
   xInput := PSumArgsInMsg(AInMsg);
   xOutput := PSumArgsOutMsg(AOutMsg);
-  // по умолчанию выходной аргумент = NULL, а поэтому выставляем ему nullFlag
-  xOutput^.resultNull := True;
   // если один из аргументов NULL значит и результат NULL
-  // в противном случае считаем сумму аргументов
-  with xInput^ do
-  begin
-    if not (n1Null or n2Null or n3Null) then
-    begin
-      xOutput^.result := n1 + n2 + n3;
-      // раз есть результат, то сбрасываем NULL флаг
-      xOutput^.resultNull := False;
-    end;
-  end;
+  xOutput^.resultNull := xInput^.n1Null or xInput^.n2Null or xInput^.n3Null;
+  xOutput^.result := xInput^.n1 + xInput^.n2 + xInput^.n3;
 end;
 
 end.      

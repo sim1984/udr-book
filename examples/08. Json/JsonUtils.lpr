@@ -6,7 +6,7 @@ library JsonUtils;
 
 uses
   {$IFDEF unix}
-  cthreads,
+  cthreads, cmem,
   {$ENDIF }
   Firebird in '..\Common\Firebird.pas',
   UdrFactories in '..\Common\UdrFactories.pas',

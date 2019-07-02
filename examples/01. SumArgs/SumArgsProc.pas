@@ -143,19 +143,9 @@ begin
   // преобразовываем указатели на вход и выход к типизированным
   xInput := PSumArgsInMsg(AInMsg);
   xOutput := PSumArgsOutMsg(AOutMsg);
-  // по умолчанию выходной аргемент = NULL, а потому выставляем ему nullFlag
-  xOutput^.resultNull := True;
-  // если один из аргументов NULL значит и резултат NULL
-  // в противном случае считаем сумму аргументов
-  with xInput^ do
-  begin
-    if not (n1Null or n2Null or n3Null) then
-    begin
-      xOutput^.result := n1 + n2 + n3;
-      // раз есть результат, то сбрасываем NULL флаг
-      xOutput^.resultNull := False;
-    end;
-  end;
+  // если один из аргументов NULL значит и результат NULL
+  xOutput^.resultNull := xInput^.n1Null or xInput^.n2Null or xInput^.n3Null;
+  xOutput^.result := xInput^.n1 + xInput^.n2 + xInput^.n3;
 end;
 
 end.

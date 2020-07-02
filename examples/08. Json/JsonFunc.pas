@@ -1,27 +1,27 @@
 ﻿{
- *	PROGRAM:	UDR samples.
- *	MODULE:		JsonFunc.pas
- *	DESCRIPTION:	A sample work with IExternalContext in extenal function.
- *
- *  The contents of this file are subject to the Initial
- *  Developer's Public License Version 1.0 (the "License");
- *  you may not use this file except in compliance with the
- *  License. You may obtain a copy of the License at
- *  http://www.ibphoenix.com/main.nfs?a=ibphoenix&page=ibp_idpl.
- *
- *  Software distributed under the License is distributed AS IS,
- *  WITHOUT WARRANTY OF ANY KIND, either express or implied.
- *  See the License for the specific language governing rights
- *  and limitations under the License.
- *
- *  The Original Code was created by Simonov Denis
- *  for the book Writing UDR Firebird in Pascal.
- *
- *  Copyright (c) 2018 Simonov Denis <sim-mail@list.ru>
- *  and all contributors signed below.
- *
- *  All Rights Reserved.
- *  Contributor(s): ______________________________________. }
+  *	PROGRAM:	UDR samples.
+  *	MODULE:		JsonFunc.pas
+  *	DESCRIPTION:	A sample work with IExternalContext in extenal function.
+  *
+  *  The contents of this file are subject to the Initial
+  *  Developer's Public License Version 1.0 (the "License");
+  *  you may not use this file except in compliance with the
+  *  License. You may obtain a copy of the License at
+  *  http://www.ibphoenix.com/main.nfs?a=ibphoenix&page=ibp_idpl.
+  *
+  *  Software distributed under the License is distributed AS IS,
+  *  WITHOUT WARRANTY OF ANY KIND, either express or implied.
+  *  See the License for the specific language governing rights
+  *  and limitations under the License.
+  *
+  *  The Original Code was created by Simonov Denis
+  *  for the book Writing UDR Firebird in Pascal.
+  *
+  *  Copyright (c) 2018 Simonov Denis <sim-mail@list.ru>
+  *  and all contributors signed below.
+  *
+  *  All Rights Reserved.
+  *  Contributor(s): ______________________________________. }
 
 unit JsonFunc;
 
@@ -309,7 +309,7 @@ begin
     // получаем указатель на данные поля
     pData := ABuffer + AMeta.getOffset(AStatus, i);
     // аналог AMeta->getType(AStatus, i) & ~1
-	fieldType := AMeta.getType(AStatus, i) and not 1;
+    fieldType := AMeta.getType(AStatus, i) and not 1;
     case fieldType of
       // VARCHAR
       SQL_VARYING:
@@ -317,20 +317,19 @@ begin
           // размер буфера для VARCHAR
           metaLength := AMeta.getLength(AStatus, i);
           charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
-          // Для VARCHAR первые 2 байта - длина
+          // Для VARCHAR первые 2 байта - длина в байтах
           charLength := PSmallint(pData)^;
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
           begin
 {$IFNDEF FPC}
             StringValue := TNetEncoding.base64.EncodeBytesToString((pData + 2),
-              charLength * charset.GetCharWidth);
+              charLength);
 {$ELSE}
             // копируем данные в буфер начиная с 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
-              metaLength);
-            SetLength(StringValue, charLength);
+              charLength);
             StringValue := EncodeStringBase64(StringValue);
 {$ENDIF}
           end
@@ -339,8 +338,7 @@ begin
             // копируем данные в буфер начиная с 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
-              metaLength);
-            SetLength(StringValue, charLength);
+              charLength);
           end;
 {$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
@@ -616,18 +614,18 @@ begin
           jsonObject.AddPair(FieldName, StringValue);
 {$ELSE}
         end;
-      jsonObject.Add(FieldName, StringValue);
+        jsonObject.Add(FieldName, StringValue);
 {$ENDIF}
       end;
 
-      end;
-      end;
+    end;
+  end;
       // добавление записи в формате Json в массив
 {$IFNDEF FPC}
-      AJson.AddElement(jsonObject);
+  AJson.AddElement(jsonObject);
 {$ELSE}
-      AJson.Add(jsonObject);
+  AJson.Add(jsonObject);
 {$ENDIF}
-      end;
+end;
 
-      end.
+end.

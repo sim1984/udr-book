@@ -189,10 +189,7 @@ begin
   end;
 
   xText := readBlob(AStatus, AContext, @xInput.txt);
-  xDelimiter := TFBCharSet.CS_UTF8.GetString(TBytes(@xInput.delimiter.data), 0, 4 * xInput.delimiter.length);
-  // автоматически не правильно определяется потому что строки
-  // не завершены нулём
-  SetLength(xDelimiter, xInput.delimiter.length);
+  xDelimiter := TFBCharSet.CS_UTF8.GetString(TBytes(@xInput.delimiter.data), 0, xInput.delimiter.length);
 
   Result := TSplitResultSet.Create;
   with TSplitResultSet(Result) do

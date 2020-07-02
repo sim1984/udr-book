@@ -367,7 +367,7 @@ begin
           // размер буфера для VARCHAR
           metaLength := AMeta.getLength(AStatus, i);
           charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
-          // Для VARCHAR первые 2 байта - длина
+          // Для VARCHAR первые 2 байта - длина в байтах
           charLength := PSmallint(pData)^;
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
@@ -378,8 +378,7 @@ begin
             // копируем данные в буфер начиная с 3 байта
             Move((pData + 2)^, CharBuffer, metaLength - 2);
             StringValue := charset.GetString(TBytes(@CharBuffer), 0,
-              charLength * charset.GetCharWidth)
-            SetLength(StringValue, charLength);
+              charLength);
           end;
           jsonObject.AddPair(FieldName, StringValue);
         end;
@@ -585,7 +584,7 @@ end;
 
   <para>Для строк типа CHAR и VARCHAR проверяем кодировку, если это кодировка OCTETS, то кодируем
     строку алгоритмом base64, в противном случае преобразуем данные из буфера в строку Delphi.
-    Обратите внимание, что для типа VARCHAR первые 2 байта содержат длину строки в символах. </para>
+    Обратите внимание, что для типа VARCHAR первые 2 байта содержат длину строки в байтах. </para>
   <para>Типы SMALLINT, INTEGER, BIGINT могут быть как обычными целыми числами, так масштабируемыми.
     Масштаб числа можно получить методом <methodname>getScale</methodname> интерфейса
       <interfacename>IMessageMetadata</interfacename>. Если масштаб не равен 0, то требуется

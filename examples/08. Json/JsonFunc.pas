@@ -257,7 +257,6 @@ var
   util: IUtil;
   metaLength: Integer;
   // типы
-  CharBuffer: array [0 .. 35766] of Byte;
   charLength: Smallint;
   charset: TFBCharSet;
   StringValue: string;
@@ -327,8 +326,7 @@ begin
               charLength);
 {$ELSE}
             // копируем данные в буфер начиная с 3 байта
-            Move((pData + 2)^, CharBuffer, metaLength - 2);
-            StringValue := charset.GetString(TBytes(@CharBuffer), 0,
+            StringValue := charset.GetString(TBytes(pData), 2,
               charLength);
             StringValue := EncodeStringBase64(StringValue);
 {$ENDIF}
@@ -336,8 +334,7 @@ begin
           else
           begin
             // копируем данные в буфер начиная с 3 байта
-            Move((pData + 2)^, CharBuffer, metaLength - 2);
-            StringValue := charset.GetString(TBytes(@CharBuffer), 0,
+            StringValue := charset.GetString(TBytes(pData), 2,
               charLength);
           end;
 {$IFNDEF FPC}
@@ -356,11 +353,10 @@ begin
           if charset = CS_BINARY then
           begin
 {$IFNDEF FPC}
-            StringValue := TNetEncoding.base64.EncodeBytesToString((pData + 2),
+            StringValue := TNetEncoding.base64.EncodeBytesToString(pData,
               metaLength);
 {$ELSE}
-            Move(pData^, CharBuffer, metaLength);
-            StringValue := charset.GetString(TBytes(@CharBuffer), 0,
+            StringValue := charset.GetString(TBytes(pData), 0,
               metaLength);
             SetLength(StringValue, metaLength);
             StringValue := EncodeStringBase64(StringValue);
@@ -368,9 +364,7 @@ begin
           end
           else
           begin
-            // копируем данные в буфер
-            Move(pData^, CharBuffer, metaLength);
-            StringValue := charset.GetString(TBytes(@CharBuffer), 0,
+            StringValue := charset.GetString(TBytes(pData), 0,
               metaLength);
             charLength := metaLength div charset.GetCharWidth;
             SetLength(StringValue, charLength);

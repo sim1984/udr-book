@@ -4,8 +4,7 @@
     xmlns:xlink="http://www.w3.org/1999/xlink" version="5.0" xml:id="udr" xml:lang="ru">
     <info>
         <title>Написание UDR Firebird на Pascal</title>
-        <edition>2 июля 2019 — 0.65 Beta</edition>
-        
+        <edition>2 июля 2020 — 0.7 Beta</edition>
         <authorgroup>
             <author>
                 <personname><firstname>Денис</firstname>

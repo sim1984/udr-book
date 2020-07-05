@@ -257,6 +257,7 @@ var
   util: IUtil;
   metaLength: Integer;
   // типы
+  CharBuffer: TBytes;
   charLength: Smallint;
   charset: TFBCharSet;
   StringValue: string;
@@ -315,8 +316,8 @@ begin
         begin
           // размер буфера для VARCHAR
           metaLength := AMeta.getLength(AStatus, i);
+          SetLength(CharBuffer, metaLength);
           charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
-          // Для VARCHAR первые 2 байта - длина в байтах
           charLength := PSmallint(pData)^;
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
@@ -325,17 +326,19 @@ begin
             StringValue := TNetEncoding.base64.EncodeBytesToString((pData + 2),
               charLength);
 {$ELSE}
-            // копируем данные в буфер начиная с 3 байта
-            StringValue := charset.GetString(TBytes(pData), 2,
-              charLength);
+            // Для VARCHAR первые 2 байта - длина в байтах
+            // поэтому копируем в буфер начиная с 3 байта
+            Move((pData + 2)^, CharBuffer[0], metaLength);
+            StringValue := charset.GetString(CharBuffer, 0, charLength);
             StringValue := EncodeStringBase64(StringValue);
 {$ENDIF}
           end
           else
           begin
-            // копируем данные в буфер начиная с 3 байта
-            StringValue := charset.GetString(TBytes(pData), 2,
-              charLength);
+            // Для VARCHAR первые 2 байта - длина в байтах
+            // поэтому копируем в буфер начиная с 3 байта
+            Move((pData + 2)^, CharBuffer[0], metaLength);
+            StringValue := charset.GetString(CharBuffer, 0, charLength);
           end;
 {$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
@@ -348,7 +351,9 @@ begin
         begin
           // размер буфера для CHAR
           metaLength := AMeta.getLength(AStatus, i);
+          SetLength(CharBuffer, metaLength);
           charset := TFBCharSet(AMeta.getCharSet(AStatus, i));
+          Move(pData^, CharBuffer[0], metaLength);
           // бинарные данные кодируем в base64
           if charset = CS_BINARY then
           begin
@@ -356,16 +361,13 @@ begin
             StringValue := TNetEncoding.base64.EncodeBytesToString(pData,
               metaLength);
 {$ELSE}
-            StringValue := charset.GetString(TBytes(pData), 0,
-              metaLength);
-            SetLength(StringValue, metaLength);
+            StringValue := charset.GetString(CharBuffer, 0, metaLength);
             StringValue := EncodeStringBase64(StringValue);
 {$ENDIF}
           end
           else
           begin
-            StringValue := charset.GetString(TBytes(pData), 0,
-              metaLength);
+            StringValue := charset.GetString(CharBuffer, 0, metaLength);
             charLength := metaLength div charset.GetCharWidth;
             SetLength(StringValue, charLength);
           end;

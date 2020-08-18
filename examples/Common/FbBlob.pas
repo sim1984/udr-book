@@ -47,16 +47,16 @@ type
     function Write(AStatus: IStatus; const Buffer; Count: Cardinal): Cardinal;
     procedure GetBlobInfo(AStatus: IStatus; var NumSegments, MaxSegmentSize,
       TotalSize: Longint; var BlobType: Smallint);
-    { Загружает в BLOB содержимое потока
+    { Р—Р°РіСЂСѓР¶Р°РµС‚ РІ BLOB СЃРѕРґРµСЂР¶РёРјРѕРµ РїРѕС‚РѕРєР°
 
-      @param(AStatus Статус вектор)
-      @param(AStream Поток)
+      @param(AStatus РЎС‚Р°С‚СѓСЃ РІРµРєС‚РѕСЂ)
+      @param(AStream РџРѕС‚РѕРє)
     }
     procedure LoadFromStream(AStatus: IStatus; AStream: TStream);
-    { Загружает в поток содержимое BLOB
+    { Р—Р°РіСЂСѓР¶Р°РµС‚ РІ РїРѕС‚РѕРє СЃРѕРґРµСЂР¶РёРјРѕРµ BLOB
 
-      @param(AStatus Статус вектор)
-      @param(AStream Поток)
+      @param(AStatus РЎС‚Р°С‚СѓСЃ РІРµРєС‚РѕСЂ)
+      @param(AStream РџРѕС‚РѕРє)
     }
     procedure SaveToStream(AStatus: IStatus; AStream: TStream);
   end;

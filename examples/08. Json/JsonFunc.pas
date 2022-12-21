@@ -1,7 +1,7 @@
 {
-  *	PROGRAM:	UDR samples.
-  *	MODULE:		JsonFunc.pas
-  *	DESCRIPTION:	A sample work with IExternalContext in extenal function.
+  * PROGRAM:    UDR samples.
+  * MODULE:     JsonFunc.pas
+  * DESCRIPTION:    A sample work with IExternalContext in extenal function.
   *
   *  The contents of this file are subject to the Initial
   *  Developer's Public License Version 1.0 (the "License");
@@ -233,7 +233,7 @@ begin
     if Assigned(stmt) then
       stmt.release;
     if Assigned(rs) then
-      rs.release;	  
+      rs.release;
     if Assigned(outBlob) then
       outBlob.release;
     tra.release;
@@ -641,7 +641,7 @@ begin
 
     end;
   end;
-      // добавление записи в формате Json в массив
+  // добавление записи в формате Json в массив
 {$IFNDEF FPC}
   AJson.AddElement(jsonObject);
 {$ELSE}

@@ -142,13 +142,16 @@ begin
         break;
       end;
     end;
+    // закрываем BLOB
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     blob.close(AStatus);
-	blob := nil;
+    blob := nil;
   finally
     if Assigned(blob) then
       blob.release;
-    att.release;
     trx.release;
+    att.release;
     xStream.Free;
   end;
 

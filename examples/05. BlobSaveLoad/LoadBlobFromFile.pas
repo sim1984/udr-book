@@ -139,14 +139,14 @@ begin
   blob := nil;
   try
     xStreamSize := xStream.Size;
-	// определяем максимальный размер буфера (сегмента)
+    // определяем максимальный размер буфера (сегмента)
     if xStreamSize > MaxBufSize then
       xBufferSize := MaxBufSize
     else
       xBufferSize := xStreamSize;
-	// создаЄм новый blob  
+    // создаём новый blob
     blob := att.createBlob(AStatus, trx, @xOutput.blobData, 0, nil);
-	// читаем содержимое потока и пишем его в BLOB посегментно
+    // читаем содержимое потока и пишем его в BLOB посегментно
     while xStreamSize <> 0 do
     begin
       if xStreamSize > xBufferSize then
@@ -159,14 +159,16 @@ begin
 
       Dec(xStreamSize, xReadLength);
     end;
-	// закрываем BLOB
+    // закрываем BLOB
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     blob.close(AStatus);
-	blob := nil;
+    blob := nil;
   finally
     if Assigned(blob) then
       blob.release;
-    att.release;
     trx.release;
+    att.release;
     xStream.Free;
   end;
 end;

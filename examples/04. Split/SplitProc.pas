@@ -158,9 +158,18 @@ var
   xDelimiter: string;
 begin
   xInput := AInMsg;
+
+  Result := TSplitResultSet.Create;
+  TSplitResultSet(Result).Output := AOutMsg;
+
   if xInput.txtNull or xInput.delimiterNull then
   begin
-    Result := nil;
+    with TSplitResultSet(Result) do
+    begin
+      // создаём пустой массив
+      OutputArray := [];
+      Counter := 1;
+    end;
     Exit;
   end;
 
@@ -171,10 +180,8 @@ begin
   // ставим кол-во байт/4
   SetLength(xDelimiter, 1);
 
-  Result := TSplitResultSet.Create;
   with TSplitResultSet(Result) do
   begin
-    Output := AOutMsg;
     OutputArray := xText.Split([xDelimiter], TStringSplitOptions.ExcludeEmpty);
     Counter := 0;
   end;
@@ -231,15 +238,17 @@ begin
       end;
     end;
     AStream.Position := 0;
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     blob.close(AStatus);
     blob := nil;
   finally
-    if Assigned(att) then
-      att.release;
-    if Assigned(trx) then
-      trx.release;
     if Assigned(blob) then
       blob.release;
+    if Assigned(trx) then
+      trx.release;
+    if Assigned(att) then
+      att.release;
   end;
 end;
 

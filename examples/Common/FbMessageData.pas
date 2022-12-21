@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		FbMessageData.pas
  *	DESCRIPTION:	Metadata utils.

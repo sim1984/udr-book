@@ -46,7 +46,7 @@ type
 
     ********************************************************* }
 	
-  // входное сообщений функции
+  // РІС…РѕРґРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёР№ С„СѓРЅРєС†РёРё
   TInput = record
     filename: record
       len: Smallint;
@@ -56,17 +56,17 @@ type
   end;
   TInputPtr = ^TInput;
   
-  // выходное сообщение функции
+  // РІС‹С…РѕРґРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ С„СѓРЅРєС†РёРё
   TOutput = record
     blobData: ISC_QUAD;
     blobDataNull: WordBool;
   end;
   TOutputPtr = ^TOutput;
 
-  // реализация функции LoadBlobFromFile
+  // СЂРµР°Р»РёР·Р°С†РёВ¤ С„СѓРЅРєС†РёРё LoadBlobFromFile
   TLoadBlobFromFileFunc = class(IExternalFunctionImpl)
   public
-    // вызываетсЯ при уничтожении экземпляра
+    // РІС‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё СЌРєР·РµРјРїР»В¤СЂР°
     procedure dispose(); override;
 
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
@@ -76,7 +76,7 @@ type
       AInMsg: Pointer; AOutMsg: Pointer); override;
   end;
 
-  // ”абрика длЯ созданиЯ экземпляра внешней функции LoadBlobFromFile
+  // Р¤Р°Р±СЂРёРєР° РґР»СЏ СЃРѕР·РґР°РЅРёСЏ СЌРєР·РµРјРїР»В¤СЂР° РІРЅРµС€РЅРµР№ С„СѓРЅРєС†РёРё LoadBlobFromFile
   TLoadBlobFromFileFuncFactory = class(IUdrFunctionFactoryImpl)
     procedure dispose(); override;
 
@@ -128,25 +128,25 @@ begin
     Exit;
   end;
   xOutput.blobDataNull := False;
-  // получаем имЯ файла
+  // РїРѕР»СѓС‡Р°РµРј РёРјСЏ С„Р°Р№Р»Р°
   xFileName := TEncoding.UTF8.GetString(TBytes(@xInput.filename.str), 0,
     xInput.filename.len * 4);
   SetLength(xFileName, xInput.filename.len);
-  // читаем файл в поток
+  // С‡РёС‚Р°РµРј С„Р°Р№Р» РІ РїРѕС‚РѕРє
   xStream := TFileStream.Create(xFileName, fmOpenRead or fmShareDenyNone);
   att := AContext.getAttachment(AStatus);
   trx := AContext.getTransaction(AStatus);
   blob := nil;
   try
     xStreamSize := xStream.Size;
-	// определЯем максимальный размер буфера (сегмента)
+	// РѕРїСЂРµРґРµР»СЏРµРј РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ СЂР°Р·РјРµСЂ Р±СѓС„РµСЂР° (СЃРµРіРјРµРЅС‚Р°)
     if xStreamSize > MaxBufSize then
       xBufferSize := MaxBufSize
     else
       xBufferSize := xStreamSize;
-	// создаём новый blob  
+	// СЃРѕР·РґР°Р„Рј РЅРѕРІС‹Р№ blob  
     blob := att.createBlob(AStatus, trx, @xOutput.blobData, 0, nil);
-	// читаем содержимое потока и пишем его в BLOB посегментно
+	// С‡РёС‚Р°РµРј СЃРѕРґРµСЂР¶РёРјРѕРµ РїРѕС‚РѕРєР° Рё РїРёС€РµРј РµРіРѕ РІ BLOB РїРѕСЃРµРіРјРµРЅС‚РЅРѕ
     while xStreamSize <> 0 do
     begin
       if xStreamSize > xBufferSize then
@@ -159,7 +159,7 @@ begin
 
       Dec(xStreamSize, xReadLength);
     end;
-	// закрываем BLOB
+	// Р·Р°РєСЂС‹РІР°РµРј BLOB
     blob.close(AStatus);
 	blob := nil;
   finally

@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		SqrFunc.pas
  *	DESCRIPTION:	A sample external function use IRoutineMetadata 

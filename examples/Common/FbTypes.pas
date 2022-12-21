@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		FbTypes.pas
  *	DESCRIPTION:	Missing types in Firebird.pas

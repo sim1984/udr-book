@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		UdrFactories.pas
  *	DESCRIPTION:	Generic UDR factories

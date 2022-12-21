@@ -1,4 +1,4 @@
-﻿{
+{
   *	PROGRAM:	UDR samples.
   *	MODULE:		JsonFunc.pas
   *	DESCRIPTION:	A sample work with IExternalContext in extenal function.

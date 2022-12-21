@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		SumArgsFunc.pas
  *	DESCRIPTION:	A sample external function.

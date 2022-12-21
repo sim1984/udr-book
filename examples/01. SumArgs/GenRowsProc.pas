@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		GenRowsProc.pas
  *	DESCRIPTION:	A sample external procedure.

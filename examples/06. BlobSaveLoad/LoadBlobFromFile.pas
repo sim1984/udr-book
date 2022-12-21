@@ -66,7 +66,7 @@ type
 
   TLoadBlobFromFileFunc = class(IExternalFunctionImpl)
   public
-    // Вызывается при уничтожении экземпляра
+    // Р’С‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё СЌРєР·РµРјРїР»СЏСЂР°
     procedure dispose(); override;
 
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
@@ -76,9 +76,9 @@ type
       AInMsg: Pointer; AOutMsg: Pointer); override;
   end;
 
-  // Фабрика для создания экземпляра внешней функции TLoadBlobFromFileFunc
+  // Р¤Р°Р±СЂРёРєР° РґР»СЏ СЃРѕР·РґР°РЅРёСЏ СЌРєР·РµРјРїР»СЏСЂР° РІРЅРµС€РЅРµР№ С„СѓРЅРєС†РёРё TLoadBlobFromFileFunc
   TLoadBlobFromFileFuncFactory = class(IUdrFunctionFactoryImpl)
-    // Вызывается при уничтожении фабрики
+    // Р’С‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё С„Р°Р±СЂРёРєРё
     procedure dispose(); override;
 
     procedure setup(AStatus: IStatus; AContext: IExternalContext;

@@ -1,4 +1,4 @@
-﻿{
+{
  *	PROGRAM:	UDR samples.
  *	MODULE:		UdrInit.pas
  *	DESCRIPTION:	A sample using setup method in IUdrFunctionFactor.

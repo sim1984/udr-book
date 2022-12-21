@@ -1,21 +1,20 @@
-#Ignore thumbnails created by Windows
+# Windows image file caches
 Thumbs.db
-#Ignore files built by Visual Studio
-*.obj
-*.exe
-*.dll
-*.rsm
-*.pdb
-*.dcu
-*.local
-*.identcache
-*.ppu
-*.a
-*.o
-*.compiled
-*.stat
-*.tvsconfig
-*.~*
-backup/
-lib/
-out/
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Thumbnails
+._*
+
+# Ignore IntelliJ project info
+.idea/
+
+# PDF and HTML
+/asciidoc/*.pdf
+/asciidoc/*.html
+
+# output documents
+/docbook/out/*
+

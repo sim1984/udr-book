@@ -178,22 +178,28 @@ end;
 function TGenRowsProcedure.open(AStatus: IStatus; AContext: IExternalContext;
   AInMsg, AOutMsg: Pointer): IExternalResultSet;
 begin
+  Result := TGenRowsResultSet.create;
+  with TGenRowsResultSet(Result) do
+  begin
+    Input := AInMsg;
+    Output := AOutMsg;
+  end;	
+
   // если один из входных аргументов NULL ничего не возвращаем
   if PInput(AInMsg).startNull or PInput(AInMsg).finishNull then
   begin
     POutput(AOutMsg).nNull := True;
-    Result := nil;
+	// намеренно ставим выходной результат таким, чтобы 
+	// метод TGenRowsResultSet.fetch вернул false
+    Output.n := Input.finish;
     exit;
   end;
   // проверки
   if PInput(AInMsg).start > PInput(AInMsg).finish then
     raise Exception.Create('First parameter greater then second parameter.');
 
-  Result := TGenRowsResultSet.create;
   with TGenRowsResultSet(Result) do
   begin
-    Input := AInMsg;
-    Output := AOutMsg;
     // начальное значение
     Output.nNull := False;
     Output.n := Input.start - 1;

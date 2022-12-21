@@ -127,11 +127,13 @@ begin
   try
     inBlob := att.openBlob(AStatus, tra, @xInput.SqlText, 0, nil);
     inBlob.SaveToStream(AStatus, inStream);
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     inBlob.close(AStatus);
-	inBlob := nil;
+    inBlob := nil;
 
     stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0], 3, 0);
-    // получаем plan
+    // получаем PLAN
     plan := stmt.getPlan(AStatus, xInput.Explain);
     // пишем plan в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Plan, 0, nil);
@@ -140,8 +142,14 @@ begin
     {$ELSE}
     outBlob.Write(AStatus, plan^, AnsiStrings.StrLen(plan));
     {$ENDIF}
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     outBlob.close(AStatus);
-	outBlob := nil;
+    outBlob := nil;
+    // метод free в случае успеха совобождает интерфейс IStatement
+    // поэтому последующий вызов release не нужен
+    stmt.free(AStatus);
+    stmt := nil;
   finally
     if Assigned(inBlob) then
       inBlob.release;

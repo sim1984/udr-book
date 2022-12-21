@@ -178,8 +178,10 @@ begin
     // читаем BLOB в поток
     inBlob := att.openBlob(AStatus, tra, @xInput.SqlText, 0, nil);
     inBlob.SaveToStream(AStatus, inStream);
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     inBlob.close(AStatus);
-	inBlob := nil;
+    inBlob := nil;
     // подготавливаем оператор
     stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0],
       xInput.SqlDialect, IStatement.PREPARE_PREFETCH_METADATA);
@@ -203,11 +205,15 @@ begin
       FreeMem(msg);
     end;
     // закрываем курсор
+    // метод close в случае успеха совобождает интерфейс IResultSet
+    // поэтому последующий вызов release не нужен
     rs.close(AStatus);
-	rs := nil;
-	// освобождаем подготовленный запрос
-	stmt.free(AStatus);
-	stmt := nil;
+    rs := nil;
+    // освобождаем подготовленный запрос
+    // метод free в случае успеха совобождает интерфейс IStatement
+    // поэтому последующий вызов release не нужен
+    stmt.free(AStatus);
+    stmt := nil;
     // пишем JSON в поток
 {$IFNDEF FPC}
     outStream.WriteString(jsonArray.ToJSON);
@@ -217,8 +223,10 @@ begin
     // пишем json в выходной blob
     outBlob := att.createBlob(AStatus, tra, @xOutput.Json, 0, nil);
     outBlob.LoadFromStream(AStatus, outStream);
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     outBlob.close(AStatus);
-	outBlob := nil;
+    outBlob := nil;
   finally
     if Assigned(inBlob) then
       inBlob.release;
@@ -570,8 +578,8 @@ begin
               textStream := TStringStream.Create('', charset.GetCodePage);
               try
                 blob.SaveToStream(AStatus, textStream);
-				blob.close(AStatus);
-				blob := nil;
+                blob.close(AStatus);
+                blob := nil;
                 StringValue := textStream.DataString;
               finally
                 textStream.Free;
@@ -580,8 +588,8 @@ begin
               binaryStream := TBytesStream.Create(nil);
               try
                 blob.SaveToStream(AStatus, binaryStream);
-				blob.close(AStatus);
-				blob := nil;				
+                blob.close(AStatus);
+                blob := nil;
                 StringValue := TEncoding.UTF8.GetString(binaryStream.Bytes, 0,
                   binaryStream.Size);
               finally
@@ -596,8 +604,8 @@ begin
               binaryStream := TBytesStream.Create;
               try
                 blob.SaveToStream(AStatus, binaryStream);
-				blob.close(AStatus);
-				blob := nil;				
+                blob.close(AStatus);
+                blob := nil;
                 // кодируем строку в base64
                 StringValue := TNetEncoding.base64.EncodeBytesToString
                   (binaryStream.Memory, binaryStream.Size);
@@ -609,8 +617,8 @@ begin
               base64Stream := TBase64EncodingStream.Create(textStream);
               try
                 blob.SaveToStream(AStatus, base64Stream);
-				blob.close(AStatus);
-				blob := nil;				
+                blob.close(AStatus);
+                blob := nil;
                 StringValue := textStream.DataString;
               finally
                 base64Stream.Free;

@@ -252,6 +252,7 @@ begin
     end;
     AStream.Position := 0;
     blob.close(AStatus);
+	blob := nil;
   finally
     if Assigned(att) then
       att.release;

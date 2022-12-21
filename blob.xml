@@ -253,6 +253,7 @@ begin
     end;
     AStream.Position := 0;
     blob.close(AStatus);
+	blob := nil;
   finally
     if Assigned(att) then
       att.release;
@@ -553,6 +554,7 @@ begin
     end;
     // закрываем BLOB
     blob.close(AStatus);
+	blob := nil;
   finally
     if Assigned(blob) then
       blob.release;
@@ -704,6 +706,7 @@ begin
     blob.LoadFromStream(AStatus, xStream);    
     // закрываем BLOB
     blob.close(AStatus);
+	blob := nil;
   finally
     if Assigned(blob) then
       blob.release;

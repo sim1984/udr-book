@@ -1,7 +1,7 @@
 ﻿{
- *	PROGRAM:	UDR samples.
- *	MODULE:		SplitProc.pas
- *	DESCRIPTION:	A sample work with blob in extenal procedure.
+ *  PROGRAM:    UDR samples.
+ *  MODULE:     SplitProc.pas
+ *  DESCRIPTION:    A sample work with blob in extenal procedure.
  *
  *  The contents of this file are subject to the Initial
  *  Developer's Public License Version 1.0 (the "License");
@@ -232,6 +232,7 @@ begin
     end;
     AStream.Position := 0;
     blob.close(AStatus);
+    blob := nil;
   finally
     if Assigned(att) then
       att.release;

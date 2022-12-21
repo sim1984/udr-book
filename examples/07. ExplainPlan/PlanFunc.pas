@@ -128,6 +128,7 @@ begin
     inBlob := att.openBlob(AStatus, tra, @xInput.SqlText, 0, nil);
     inBlob.SaveToStream(AStatus, inStream);
     inBlob.close(AStatus);
+	inBlob := nil;
 
     stmt := att.prepare(AStatus, tra, inStream.Size, @inStream.Bytes[0], 3, 0);
     // получаем plan
@@ -140,6 +141,7 @@ begin
     outBlob.Write(AStatus, plan^, AnsiStrings.StrLen(plan));
     {$ENDIF}
     outBlob.close(AStatus);
+	outBlob := nil;
   finally
     if Assigned(inBlob) then
       inBlob.release;

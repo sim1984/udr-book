@@ -143,6 +143,7 @@ begin
       end;
     end;
     blob.close(AStatus);
+	blob := nil;
   finally
     if Assigned(blob) then
       blob.release;

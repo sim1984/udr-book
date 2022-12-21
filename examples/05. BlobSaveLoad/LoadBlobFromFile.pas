@@ -66,7 +66,7 @@ type
   // реализаци€ функции LoadBlobFromFile
   TLoadBlobFromFileFunc = class(IExternalFunctionImpl)
   public
-    // ¬ызываетс€ при уничтожении экземпл€ра
+    // вызывается при уничтожении экземпл€ра
     procedure dispose(); override;
 
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
@@ -76,7 +76,7 @@ type
       AInMsg: Pointer; AOutMsg: Pointer); override;
   end;
 
-  // ‘абрика дл€ создани€ экземпл€ра внешней функции LoadBlobFromFile
+  // Фабрика для создания экземпл€ра внешней функции LoadBlobFromFile
   TLoadBlobFromFileFuncFactory = class(IUdrFunctionFactoryImpl)
     procedure dispose(); override;
 
@@ -128,7 +128,7 @@ begin
     Exit;
   end;
   xOutput.blobDataNull := False;
-  // получаем им€ файла
+  // получаем имя файла
   xFileName := TEncoding.UTF8.GetString(TBytes(@xInput.filename.str), 0,
     xInput.filename.len * 4);
   SetLength(xFileName, xInput.filename.len);
@@ -139,7 +139,7 @@ begin
   blob := nil;
   try
     xStreamSize := xStream.Size;
-	// определЄм максимальный размер буфера (сегмента)
+	// определяем максимальный размер буфера (сегмента)
     if xStreamSize > MaxBufSize then
       xBufferSize := MaxBufSize
     else
@@ -161,6 +161,7 @@ begin
     end;
 	// закрываем BLOB
     blob.close(AStatus);
+	blob := nil;
   finally
     if Assigned(blob) then
       blob.release;

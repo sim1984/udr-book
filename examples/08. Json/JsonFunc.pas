@@ -1,7 +1,7 @@
 {
-  * PROGRAM:    UDR samples.
-  * MODULE:     JsonFunc.pas
-  * DESCRIPTION:    A sample work with IExternalContext in extenal function.
+  *  PROGRAM:    UDR samples.
+  *  MODULE:     JsonFunc.pas
+  *  DESCRIPTION:    A sample work with IExternalContext in extenal function.
   *
   *  The contents of this file are subject to the Initial
   *  Developer's Public License Version 1.0 (the "License");
@@ -45,14 +45,14 @@ uses
 {$ENDIF}
     ;
 
-// *********************************************************
-// create function GetJson (
-// sql_text blob sub_type text,
-// sql_dialect smallint not null default 3
-// ) returns blob sub_type text character set utf8
-// external name 'JsonUtils!getJson'
-// engine udr;
-// *********************************************************
+{ *********************************************************
+  create function GetJson (
+    sql_text blob sub_type text,
+    sql_dialect smallint not null default 3
+  ) returns blob sub_type text character set utf8
+  external name 'JsonUtils!getJson'
+  engine udr;
+ ********************************************************* }
 
 type
 

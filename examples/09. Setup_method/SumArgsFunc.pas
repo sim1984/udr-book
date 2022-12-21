@@ -1,7 +1,7 @@
 {
- *	PROGRAM:	UDR samples.
- *	MODULE:		SumArgsFunc.pas
- *	DESCRIPTION:	A sample using setup method in IUdrFunctionFactor.
+ *  PROGRAM:    UDR samples.
+ *  MODULE:     SumArgsFunc.pas
+ *  DESCRIPTION:    A sample using setup method in IUdrFunctionFactor.
  *
  *  The contents of this file are subject to the Initial
  *  Developer's Public License Version 1.0 (the "License");
@@ -35,15 +35,16 @@ interface
 uses
   Firebird;
 
-// *********************************************************
-// create function sum_args (
-// n1 integer not null,
-// n2 integer not null,
-// n3 integer not null
-// ) returns integer
-// external name 'myudr!sum_args'
-// engine udr;
-// *********************************************************
+{ *********************************************************
+  create function sum_args (
+    n1 integer not null,
+    n2 integer not null,
+    n3 integer not null
+  ) returns integer
+  external name 'myudr!sum_args'
+  engine udr;
+********************************************************* }
+
 
 type
 

@@ -1,8 +1,7 @@
 {
- *	PROGRAM:	UDR samples.
- *	MODULE:		SplitProc.pas
- *	DESCRIPTION:	A sample work with blob in extenal procedure 
- *                  and use setup method in IUdrProcedureFactory.
+ *  PROGRAM:    UDR samples.
+ *  MODULE:     SplitProc.pas
+ *  DESCRIPTION:    A sample work with blob in extenal procedure.
  *
  *  The contents of this file are subject to the Initial
  *  Developer's Public License Version 1.0 (the "License");
@@ -33,7 +32,7 @@ unit SplitProc;
 interface
 
 uses
-  Firebird, Classes, SysUtils, FbCharsets, FbTypes;
+  Firebird, Classes, SysUtils, FbCharsets;
 
 type
 
@@ -41,7 +40,7 @@ type
 
     create procedure split (
         txt blob sub_type text character set utf8,
-        delimiter varchar(8) character set utf8 = ','
+        delimiter char(1) character set utf8 = ','
     ) returns (
         id integer
     )
@@ -53,52 +52,18 @@ type
   TInput = record
     txt: ISC_QUAD;
     txtNull: WordBool;
-    delimiter: record
-      length: Smallint;
-      data: array [0 .. 31] of AnsiChar;
-    end;
+    delimiter: array [0 .. 3] of AnsiChar;
     delimiterNull: WordBool;
   end;
 
   TInputPtr = ^TInput;
 
   TOutput = record
-    txt: record
-      length: Smallint;
-      data: array [0 .. 32763] of AnsiChar;
-    end;
-    txtNull: WordBool;
+    Id: Integer;
+    Null: WordBool;
   end;
 
   TOutputPtr = ^TOutput;
-
-  // Фабрика для создания экземпляра внешней процедуры TSplitProcedure
-  TSplitProcedureFactory = class(IUdrProcedureFactoryImpl)
-    // Вызывается при уничтожении фабрики
-    procedure dispose(); override;
-
-    { Выполняется каждый раз при загрузке внешней процедуры в кеш метаданных
-
-      @param(AStatus Статус вектор)
-      @param(AContext Контекст выполнения внешней процедуры)
-      @param(AMetadata Метаданные внешней процедуры)
-      @param(AInBuilder Построитель сообщения для входных метаданных)
-      @param(AOutBuilder Построитель сообщения для выходных метаданных)
-    }
-    procedure setup(AStatus: IStatus; AContext: IExternalContext;
-      AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
-      AOutBuilder: IMetadataBuilder); override;
-
-    { Создание нового экземпляра внешней процедуры TSplitProcedure
-
-      @param(AStatus Статус вектор)
-      @param(AContext Контекст выполнения процедуры функции)
-      @param(AMetadata Метаданные внешней процедуры)
-      @returns(Экземпляр внешней функции)
-    }
-    function newItem(AStatus: IStatus; AContext: IExternalContext;
-      AMetadata: IRoutineMetadata): IExternalProcedure; override;
-  end;
 
   TSplitProcedure = class(IExternalProcedureImpl)
   private
@@ -142,18 +107,29 @@ end;
 
 function TSplitResultSet.fetch(AStatus: IStatus): Boolean;
 var
-  xBytes: TBytes;
-  xString: string;
+  statusVector: array [0 .. 4] of NativeIntPtr;
 begin
   if Counter <= High(OutputArray) then
   begin
-    Output.txtNull := False;
-    xString := OutputArray[Counter];
-    if (xString.Length > 8191) then
-      raise Exception.Create('String overflow');
-    Output.txt.length := xString.Length;
-    xBytes := TEncoding.UTF8.GetBytes(xString);
-    Move(xBytes[0], Output.txt.data[0], High(xBytes) + 1);
+    Output.Null := False;
+    // исключение будут перехвачены в любом случае с кодом isc_random
+    // здесь же мы будем выбрасывать стандартную для Firebird
+    // ошибку isc_convert_error
+    try
+      Output.Id := OutputArray[Counter].ToInteger();
+    except
+      on e: EConvertError do
+      begin
+
+        statusVector[0] := NativeIntPtr(isc_arg_gds);
+        statusVector[1] := NativeIntPtr(isc_convert_error);
+        statusVector[2] := NativeIntPtr(isc_arg_string);
+        statusVector[3] := NativeIntPtr(PAnsiChar('Cannot convert string to integer'));
+        statusVector[4] := NativeIntPtr(isc_arg_end);
+
+        AStatus.setErrors(@statusVector);
+      end;
+    end;
     inc(Counter);
     Result := True;
   end
@@ -182,19 +158,30 @@ var
   xDelimiter: string;
 begin
   xInput := AInMsg;
+
+  Result := TSplitResultSet.Create;
+  TSplitResultSet(Result).Output := AOutMsg;
+
   if xInput.txtNull or xInput.delimiterNull then
   begin
-    Result := nil;
+    with TSplitResultSet(Result) do
+    begin
+      // создаём пустой массив
+      OutputArray := [];
+      Counter := 1;
+    end;
     Exit;
   end;
 
   xText := readBlob(AStatus, AContext, @xInput.txt);
-  xDelimiter := TFBCharSet.CS_UTF8.GetString(TBytes(@xInput.delimiter.data), 0, xInput.delimiter.length);
+  xDelimiter := TFBCharSet.CS_UTF8.GetString(TBytes(@xInput.delimiter), 0, 4);
+  // автоматически не правильно определяется потому что строки
+  // не завершены нулём
+  // ставим кол-во байт/4
+  SetLength(xDelimiter, 1);
 
-  Result := TSplitResultSet.Create;
   with TSplitResultSet(Result) do
   begin
-    Output := AOutMsg;
     OutputArray := xText.Split([xDelimiter], TStringSplitOptions.ExcludeEmpty);
     Counter := 0;
   end;
@@ -251,47 +238,18 @@ begin
       end;
     end;
     AStream.Position := 0;
+    // метод close в случае успеха совобождает интерфейс IBlob
+    // поэтому последующий вызов release не нужен
     blob.close(AStatus);
-	blob := nil;
+    blob := nil;
   finally
-    if Assigned(att) then
-      att.release;
-    if Assigned(trx) then
-      trx.release;
     if Assigned(blob) then
       blob.release;
+    if Assigned(trx) then
+      trx.release;
+    if Assigned(att) then
+      att.release;
   end;
-end;
-
-{ TSplitProcedureFactory }
-
-procedure TSplitProcedureFactory.dispose;
-begin
-  Destroy;
-end;
-
-function TSplitProcedureFactory.newItem(AStatus: IStatus;
-  AContext: IExternalContext; AMetadata: IRoutineMetadata): IExternalProcedure;
-begin
-  Result :=  TSplitProcedure.create();
-end;
-
-procedure TSplitProcedureFactory.setup(AStatus: IStatus;
-  AContext: IExternalContext; AMetadata: IRoutineMetadata; AInBuilder,
-  AOutBuilder: IMetadataBuilder);
-begin
-  // входной BLOB
-  AInBuilder.setType(AStatus, 0, SQL_BLOB + 1);
-  AInBuilder.setSubType(AStatus, 0, 1);
-  AInBuilder.setCharSet(AStatus, 0, Cardinal(CS_UTF8));
-  // разделитель
-  AInBuilder.setType(AStatus, 1, SQL_VARYING + 1);
-  AInBuilder.setCharSet(AStatus, 1, Cardinal(CS_UTF8));
-  AInBuilder.setLength(AStatus, 1, 4 * 8);
-  // выходная строка
-  AOutBuilder.setType(AStatus, 0, SQL_VARYING + 1);
-  AOutBuilder.setCharSet(AStatus, 0, Cardinal(CS_UTF8));
-  AOutBuilder.setLength(AStatus, 0, 4 * 8191);
 end;
 
 end.

@@ -39,6 +39,9 @@ type
 	IMetadataBuilder = class;
 	IResultSet = class;
 	IStatement = class;
+	IBatch = class;
+	IBatchCompletionState = class;
+	IReplicator = class;
 	IRequest = class;
 	IEvents = class;
 	IAttachment = class;
@@ -59,6 +62,7 @@ type
 	IListUsers = class;
 	ILogonInfo = class;
 	IManagement = class;
+	IAuthBlock = class;
 	IWireCryptPlugin = class;
 	ICryptKeyCallback = class;
 	IKeyHolderPlugin = class;
@@ -100,6 +104,13 @@ type
 	IUdrProcedureFactory = class;
 	IUdrTriggerFactory = class;
 	IUdrPlugin = class;
+	IDecFloat16 = class;
+	IDecFloat34 = class;
+	IInt128 = class;
+	IReplicatedField = class;
+	IReplicatedRecord = class;
+	IReplicatedTransaction = class;
+	IReplicatedSession = class;
 
 	FbException = class(Exception)
 	public
@@ -110,6 +121,8 @@ type
 
 		class procedure checkException(status: IStatus);
 		class procedure catchException(status: IStatus; e: Exception);
+		class procedure setVersionError(status: IStatus; interfaceName: string;
+			currentVersion, expectedVersion: NativeInt);
 
 	private
 		status: IStatus;
@@ -118,6 +131,42 @@ type
 	ISC_DATE = Integer;
 	ISC_TIME = Integer;
 	ISC_QUAD = array [1..2] of Integer;
+	FB_DEC16 = array [1..1] of Int64;
+	FB_DEC34 = array [1..2] of Int64;
+	FB_I128 = array [1..2] of Int64;
+
+	isc_tr_handle = ^Integer;
+	isc_stmt_handle = ^Integer;
+
+	ISC_USHORT = word;		{ 16 bit unsigned }
+	ISC_SHORT = smallint;	{ 16 bit signed }
+
+	ISC_TIME_TZ = record
+		utc_time: ISC_TIME;
+		time_zone: ISC_USHORT;
+	end;
+
+	ISC_TIME_TZ_EX = record
+		utc_time: ISC_TIME;
+		time_zone: ISC_USHORT;
+		ext_offset: ISC_SHORT;
+	end;
+
+	ISC_TIMESTAMP = record
+		timestamp_date: ISC_DATE;
+		timestamp_time: ISC_TIME;
+	end;
+
+	ISC_TIMESTAMP_TZ = record
+		utc_timestamp: ISC_TIMESTAMP;
+		time_zone: ISC_USHORT;
+	end;
+
+	ISC_TIMESTAMP_TZ_EX = record
+		utc_timestamp: ISC_TIMESTAMP;
+		time_zone: ISC_USHORT;
+		ext_offset: ISC_SHORT;
+	end;
 
 	ntrace_relation_t = Integer;
 	TraceCounts = Record
@@ -142,9 +191,17 @@ type
 	BooleanPtr = ^Boolean;
 	BytePtr = ^Byte;
 	CardinalPtr = ^Cardinal;
+	FB_DEC16Ptr = ^FB_DEC16;
+	FB_DEC34Ptr = ^FB_DEC34;
+	FB_I128Ptr = ^FB_I128;
 	IKeyHolderPluginPtr = ^IKeyHolderPlugin;
 	ISC_QUADPtr = ^ISC_QUAD;
+	ISC_TIMESTAMP_TZPtr = ^ISC_TIMESTAMP_TZ;
+	ISC_TIMESTAMP_TZ_EXPtr = ^ISC_TIMESTAMP_TZ_EX;
+	ISC_TIME_TZPtr = ^ISC_TIME_TZ;
+	ISC_TIME_TZ_EXPtr = ^ISC_TIME_TZ_EX;
 	Int64Ptr = ^Int64;
+	IntegerPtr = ^Integer;
 	NativeIntPtr = ^NativeInt;
 	PerformanceInfoPtr = ^PerformanceInfo;
 	dscPtr = ^dsc;
@@ -192,6 +249,7 @@ type
 	IFirebirdConf_asIntegerPtr = function(this: IFirebirdConf; key: Cardinal): Int64; cdecl;
 	IFirebirdConf_asStringPtr = function(this: IFirebirdConf; key: Cardinal): PAnsiChar; cdecl;
 	IFirebirdConf_asBooleanPtr = function(this: IFirebirdConf; key: Cardinal): Boolean; cdecl;
+	IFirebirdConf_getVersionPtr = function(this: IFirebirdConf; status: IStatus): Cardinal; cdecl;
 	IPluginConfig_getConfigFileNamePtr = function(this: IPluginConfig): PAnsiChar; cdecl;
 	IPluginConfig_getDefaultConfigPtr = function(this: IPluginConfig; status: IStatus): IConfig; cdecl;
 	IPluginConfig_getFirebirdConfPtr = function(this: IPluginConfig; status: IStatus): IFirebirdConf; cdecl;
@@ -215,23 +273,29 @@ type
 	IConfigManager_getPluginConfigPtr = function(this: IConfigManager; configuredPlugin: PAnsiChar): IConfig; cdecl;
 	IConfigManager_getInstallDirectoryPtr = function(this: IConfigManager): PAnsiChar; cdecl;
 	IConfigManager_getRootDirectoryPtr = function(this: IConfigManager): PAnsiChar; cdecl;
+	IConfigManager_getDefaultSecurityDbPtr = function(this: IConfigManager): PAnsiChar; cdecl;
 	IEventCallback_eventCallbackFunctionPtr = procedure(this: IEventCallback; length: Cardinal; events: BytePtr); cdecl;
 	IBlob_getInfoPtr = procedure(this: IBlob; status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
 	IBlob_getSegmentPtr = function(this: IBlob; status: IStatus; bufferLength: Cardinal; buffer: Pointer; segmentLength: CardinalPtr): Integer; cdecl;
 	IBlob_putSegmentPtr = procedure(this: IBlob; status: IStatus; length: Cardinal; buffer: Pointer); cdecl;
+	IBlob_deprecatedCancelPtr = procedure(this: IBlob; status: IStatus); cdecl;
+	IBlob_deprecatedClosePtr = procedure(this: IBlob; status: IStatus); cdecl;
+	IBlob_seekPtr = function(this: IBlob; status: IStatus; mode: Integer; offset: Integer): Integer; cdecl;
 	IBlob_cancelPtr = procedure(this: IBlob; status: IStatus); cdecl;
 	IBlob_closePtr = procedure(this: IBlob; status: IStatus); cdecl;
-	IBlob_seekPtr = function(this: IBlob; status: IStatus; mode: Integer; offset: Integer): Integer; cdecl;
 	ITransaction_getInfoPtr = procedure(this: ITransaction; status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
 	ITransaction_preparePtr = procedure(this: ITransaction; status: IStatus; msgLength: Cardinal; message: BytePtr); cdecl;
-	ITransaction_commitPtr = procedure(this: ITransaction; status: IStatus); cdecl;
+	ITransaction_deprecatedCommitPtr = procedure(this: ITransaction; status: IStatus); cdecl;
 	ITransaction_commitRetainingPtr = procedure(this: ITransaction; status: IStatus); cdecl;
-	ITransaction_rollbackPtr = procedure(this: ITransaction; status: IStatus); cdecl;
+	ITransaction_deprecatedRollbackPtr = procedure(this: ITransaction; status: IStatus); cdecl;
 	ITransaction_rollbackRetainingPtr = procedure(this: ITransaction; status: IStatus); cdecl;
-	ITransaction_disconnectPtr = procedure(this: ITransaction; status: IStatus); cdecl;
+	ITransaction_deprecatedDisconnectPtr = procedure(this: ITransaction; status: IStatus); cdecl;
 	ITransaction_joinPtr = function(this: ITransaction; status: IStatus; transaction: ITransaction): ITransaction; cdecl;
 	ITransaction_validatePtr = function(this: ITransaction; status: IStatus; attachment: IAttachment): ITransaction; cdecl;
 	ITransaction_enterDtcPtr = function(this: ITransaction; status: IStatus): ITransaction; cdecl;
+	ITransaction_commitPtr = procedure(this: ITransaction; status: IStatus); cdecl;
+	ITransaction_rollbackPtr = procedure(this: ITransaction; status: IStatus); cdecl;
+	ITransaction_disconnectPtr = procedure(this: ITransaction; status: IStatus); cdecl;
 	IMessageMetadata_getCountPtr = function(this: IMessageMetadata; status: IStatus): Cardinal; cdecl;
 	IMessageMetadata_getFieldPtr = function(this: IMessageMetadata; status: IStatus; index: Cardinal): PAnsiChar; cdecl;
 	IMessageMetadata_getRelationPtr = function(this: IMessageMetadata; status: IStatus; index: Cardinal): PAnsiChar; cdecl;
@@ -247,6 +311,8 @@ type
 	IMessageMetadata_getNullOffsetPtr = function(this: IMessageMetadata; status: IStatus; index: Cardinal): Cardinal; cdecl;
 	IMessageMetadata_getBuilderPtr = function(this: IMessageMetadata; status: IStatus): IMetadataBuilder; cdecl;
 	IMessageMetadata_getMessageLengthPtr = function(this: IMessageMetadata; status: IStatus): Cardinal; cdecl;
+	IMessageMetadata_getAlignmentPtr = function(this: IMessageMetadata; status: IStatus): Cardinal; cdecl;
+	IMessageMetadata_getAlignedLengthPtr = function(this: IMessageMetadata; status: IStatus): Cardinal; cdecl;
 	IMetadataBuilder_setTypePtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; type_: Cardinal); cdecl;
 	IMetadataBuilder_setSubTypePtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; subType: Integer); cdecl;
 	IMetadataBuilder_setLengthPtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; length: Cardinal); cdecl;
@@ -257,6 +323,10 @@ type
 	IMetadataBuilder_removePtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal); cdecl;
 	IMetadataBuilder_addFieldPtr = function(this: IMetadataBuilder; status: IStatus): Cardinal; cdecl;
 	IMetadataBuilder_getMetadataPtr = function(this: IMetadataBuilder; status: IStatus): IMessageMetadata; cdecl;
+	IMetadataBuilder_setFieldPtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; field: PAnsiChar); cdecl;
+	IMetadataBuilder_setRelationPtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; relation: PAnsiChar); cdecl;
+	IMetadataBuilder_setOwnerPtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; owner: PAnsiChar); cdecl;
+	IMetadataBuilder_setAliasPtr = procedure(this: IMetadataBuilder; status: IStatus; index: Cardinal; alias: PAnsiChar); cdecl;
 	IResultSet_fetchNextPtr = function(this: IResultSet; status: IStatus; message: Pointer): Integer; cdecl;
 	IResultSet_fetchPriorPtr = function(this: IResultSet; status: IStatus; message: Pointer): Integer; cdecl;
 	IResultSet_fetchFirstPtr = function(this: IResultSet; status: IStatus; message: Pointer): Integer; cdecl;
@@ -266,8 +336,9 @@ type
 	IResultSet_isEofPtr = function(this: IResultSet; status: IStatus): Boolean; cdecl;
 	IResultSet_isBofPtr = function(this: IResultSet; status: IStatus): Boolean; cdecl;
 	IResultSet_getMetadataPtr = function(this: IResultSet; status: IStatus): IMessageMetadata; cdecl;
-	IResultSet_closePtr = procedure(this: IResultSet; status: IStatus); cdecl;
+	IResultSet_deprecatedClosePtr = procedure(this: IResultSet; status: IStatus); cdecl;
 	IResultSet_setDelayedOutputFormatPtr = procedure(this: IResultSet; status: IStatus; format: IMessageMetadata); cdecl;
+	IResultSet_closePtr = procedure(this: IResultSet; status: IStatus); cdecl;
 	IStatement_getInfoPtr = procedure(this: IStatement; status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
 	IStatement_getTypePtr = function(this: IStatement; status: IStatus): Cardinal; cdecl;
 	IStatement_getPlanPtr = function(this: IStatement; status: IStatus; detailed: Boolean): PAnsiChar; cdecl;
@@ -277,15 +348,41 @@ type
 	IStatement_executePtr = function(this: IStatement; status: IStatus; transaction: ITransaction; inMetadata: IMessageMetadata; inBuffer: Pointer; outMetadata: IMessageMetadata; outBuffer: Pointer): ITransaction; cdecl;
 	IStatement_openCursorPtr = function(this: IStatement; status: IStatus; transaction: ITransaction; inMetadata: IMessageMetadata; inBuffer: Pointer; outMetadata: IMessageMetadata; flags: Cardinal): IResultSet; cdecl;
 	IStatement_setCursorNamePtr = procedure(this: IStatement; status: IStatus; name: PAnsiChar); cdecl;
-	IStatement_freePtr = procedure(this: IStatement; status: IStatus); cdecl;
+	IStatement_deprecatedFreePtr = procedure(this: IStatement; status: IStatus); cdecl;
 	IStatement_getFlagsPtr = function(this: IStatement; status: IStatus): Cardinal; cdecl;
-	IRequest_receivePtr = procedure(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); cdecl;
-	IRequest_sendPtr = procedure(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); cdecl;
+	IStatement_getTimeoutPtr = function(this: IStatement; status: IStatus): Cardinal; cdecl;
+	IStatement_setTimeoutPtr = procedure(this: IStatement; status: IStatus; timeOut: Cardinal); cdecl;
+	IStatement_createBatchPtr = function(this: IStatement; status: IStatus; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch; cdecl;
+	IStatement_freePtr = procedure(this: IStatement; status: IStatus); cdecl;
+	IBatch_addPtr = procedure(this: IBatch; status: IStatus; count: Cardinal; inBuffer: Pointer); cdecl;
+	IBatch_addBlobPtr = procedure(this: IBatch; status: IStatus; length: Cardinal; inBuffer: Pointer; blobId: ISC_QUADPtr; parLength: Cardinal; par: BytePtr); cdecl;
+	IBatch_appendBlobDataPtr = procedure(this: IBatch; status: IStatus; length: Cardinal; inBuffer: Pointer); cdecl;
+	IBatch_addBlobStreamPtr = procedure(this: IBatch; status: IStatus; length: Cardinal; inBuffer: Pointer); cdecl;
+	IBatch_registerBlobPtr = procedure(this: IBatch; status: IStatus; existingBlob: ISC_QUADPtr; blobId: ISC_QUADPtr); cdecl;
+	IBatch_executePtr = function(this: IBatch; status: IStatus; transaction: ITransaction): IBatchCompletionState; cdecl;
+	IBatch_cancelPtr = procedure(this: IBatch; status: IStatus); cdecl;
+	IBatch_getBlobAlignmentPtr = function(this: IBatch; status: IStatus): Cardinal; cdecl;
+	IBatch_getMetadataPtr = function(this: IBatch; status: IStatus): IMessageMetadata; cdecl;
+	IBatch_setDefaultBpbPtr = procedure(this: IBatch; status: IStatus; parLength: Cardinal; par: BytePtr); cdecl;
+	IBatch_deprecatedClosePtr = procedure(this: IBatch; status: IStatus); cdecl;
+	IBatch_closePtr = procedure(this: IBatch; status: IStatus); cdecl;
+	IBatch_getInfoPtr = procedure(this: IBatch; status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
+	IBatchCompletionState_getSizePtr = function(this: IBatchCompletionState; status: IStatus): Cardinal; cdecl;
+	IBatchCompletionState_getStatePtr = function(this: IBatchCompletionState; status: IStatus; pos: Cardinal): Integer; cdecl;
+	IBatchCompletionState_findErrorPtr = function(this: IBatchCompletionState; status: IStatus; pos: Cardinal): Cardinal; cdecl;
+	IBatchCompletionState_getStatusPtr = procedure(this: IBatchCompletionState; status: IStatus; to_: IStatus; pos: Cardinal); cdecl;
+	IReplicator_processPtr = procedure(this: IReplicator; status: IStatus; length: Cardinal; data: BytePtr); cdecl;
+	IReplicator_deprecatedClosePtr = procedure(this: IReplicator; status: IStatus); cdecl;
+	IReplicator_closePtr = procedure(this: IReplicator; status: IStatus); cdecl;
+	IRequest_receivePtr = procedure(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); cdecl;
+	IRequest_sendPtr = procedure(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); cdecl;
 	IRequest_getInfoPtr = procedure(this: IRequest; status: IStatus; level: Integer; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
 	IRequest_startPtr = procedure(this: IRequest; status: IStatus; tra: ITransaction; level: Integer); cdecl;
-	IRequest_startAndSendPtr = procedure(this: IRequest; status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); cdecl;
+	IRequest_startAndSendPtr = procedure(this: IRequest; status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); cdecl;
 	IRequest_unwindPtr = procedure(this: IRequest; status: IStatus; level: Integer); cdecl;
+	IRequest_deprecatedFreePtr = procedure(this: IRequest; status: IStatus); cdecl;
 	IRequest_freePtr = procedure(this: IRequest; status: IStatus); cdecl;
+	IEvents_deprecatedCancelPtr = procedure(this: IEvents; status: IStatus); cdecl;
 	IEvents_cancelPtr = procedure(this: IEvents; status: IStatus); cdecl;
 	IAttachment_getInfoPtr = procedure(this: IAttachment; status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
 	IAttachment_startTransactionPtr = function(this: IAttachment; status: IStatus; tpbLength: Cardinal; tpb: BytePtr): ITransaction; cdecl;
@@ -303,11 +400,21 @@ type
 	IAttachment_queEventsPtr = function(this: IAttachment; status: IStatus; callback: IEventCallback; length: Cardinal; events: BytePtr): IEvents; cdecl;
 	IAttachment_cancelOperationPtr = procedure(this: IAttachment; status: IStatus; option: Integer); cdecl;
 	IAttachment_pingPtr = procedure(this: IAttachment; status: IStatus); cdecl;
+	IAttachment_deprecatedDetachPtr = procedure(this: IAttachment; status: IStatus); cdecl;
+	IAttachment_deprecatedDropDatabasePtr = procedure(this: IAttachment; status: IStatus); cdecl;
+	IAttachment_getIdleTimeoutPtr = function(this: IAttachment; status: IStatus): Cardinal; cdecl;
+	IAttachment_setIdleTimeoutPtr = procedure(this: IAttachment; status: IStatus; timeOut: Cardinal); cdecl;
+	IAttachment_getStatementTimeoutPtr = function(this: IAttachment; status: IStatus): Cardinal; cdecl;
+	IAttachment_setStatementTimeoutPtr = procedure(this: IAttachment; status: IStatus; timeOut: Cardinal); cdecl;
+	IAttachment_createBatchPtr = function(this: IAttachment; status: IStatus; transaction: ITransaction; stmtLength: Cardinal; sqlStmt: PAnsiChar; dialect: Cardinal; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch; cdecl;
+	IAttachment_createReplicatorPtr = function(this: IAttachment; status: IStatus): IReplicator; cdecl;
 	IAttachment_detachPtr = procedure(this: IAttachment; status: IStatus); cdecl;
 	IAttachment_dropDatabasePtr = procedure(this: IAttachment; status: IStatus); cdecl;
-	IService_detachPtr = procedure(this: IService; status: IStatus); cdecl;
+	IService_deprecatedDetachPtr = procedure(this: IService; status: IStatus); cdecl;
 	IService_queryPtr = procedure(this: IService; status: IStatus; sendLength: Cardinal; sendItems: BytePtr; receiveLength: Cardinal; receiveItems: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
 	IService_startPtr = procedure(this: IService; status: IStatus; spbLength: Cardinal; spb: BytePtr); cdecl;
+	IService_detachPtr = procedure(this: IService; status: IStatus); cdecl;
+	IService_cancelPtr = procedure(this: IService; status: IStatus); cdecl;
 	IProvider_attachDatabasePtr = function(this: IProvider; status: IStatus; fileName: PAnsiChar; dpbLength: Cardinal; dpb: BytePtr): IAttachment; cdecl;
 	IProvider_createDatabasePtr = function(this: IProvider; status: IStatus; fileName: PAnsiChar; dpbLength: Cardinal; dpb: BytePtr): IAttachment; cdecl;
 	IProvider_attachServiceManagerPtr = function(this: IProvider; status: IStatus; service: PAnsiChar; spbLength: Cardinal; spb: BytePtr): IService; cdecl;
@@ -331,6 +438,7 @@ type
 	IClientBlock_getDataPtr = function(this: IClientBlock; length: CardinalPtr): BytePtr; cdecl;
 	IClientBlock_putDataPtr = procedure(this: IClientBlock; status: IStatus; length: Cardinal; data: Pointer); cdecl;
 	IClientBlock_newKeyPtr = function(this: IClientBlock; status: IStatus): ICryptKey; cdecl;
+	IClientBlock_getAuthBlockPtr = function(this: IClientBlock; status: IStatus): IAuthBlock; cdecl;
 	IServer_authenticatePtr = function(this: IServer; status: IStatus; sBlock: IServerBlock; writerInterface: IWriter): Integer; cdecl;
 	IServer_setDbCryptCallbackPtr = procedure(this: IServer; status: IStatus; cryptCallback: ICryptKeyCallback); cdecl;
 	IClient_authenticatePtr = function(this: IClient; status: IStatus; cBlock: IClientBlock): Integer; cdecl;
@@ -358,14 +466,25 @@ type
 	ILogonInfo_networkProtocolPtr = function(this: ILogonInfo): PAnsiChar; cdecl;
 	ILogonInfo_remoteAddressPtr = function(this: ILogonInfo): PAnsiChar; cdecl;
 	ILogonInfo_authBlockPtr = function(this: ILogonInfo; length: CardinalPtr): BytePtr; cdecl;
+	ILogonInfo_attachmentPtr = function(this: ILogonInfo; status: IStatus): IAttachment; cdecl;
+	ILogonInfo_transactionPtr = function(this: ILogonInfo; status: IStatus): ITransaction; cdecl;
 	IManagement_startPtr = procedure(this: IManagement; status: IStatus; logonInfo: ILogonInfo); cdecl;
 	IManagement_executePtr = function(this: IManagement; status: IStatus; user: IUser; callback: IListUsers): Integer; cdecl;
 	IManagement_commitPtr = procedure(this: IManagement; status: IStatus); cdecl;
 	IManagement_rollbackPtr = procedure(this: IManagement; status: IStatus); cdecl;
+	IAuthBlock_getTypePtr = function(this: IAuthBlock): PAnsiChar; cdecl;
+	IAuthBlock_getNamePtr = function(this: IAuthBlock): PAnsiChar; cdecl;
+	IAuthBlock_getPluginPtr = function(this: IAuthBlock): PAnsiChar; cdecl;
+	IAuthBlock_getSecurityDbPtr = function(this: IAuthBlock): PAnsiChar; cdecl;
+	IAuthBlock_getOriginalPluginPtr = function(this: IAuthBlock): PAnsiChar; cdecl;
+	IAuthBlock_nextPtr = function(this: IAuthBlock; status: IStatus): Boolean; cdecl;
+	IAuthBlock_firstPtr = function(this: IAuthBlock; status: IStatus): Boolean; cdecl;
 	IWireCryptPlugin_getKnownTypesPtr = function(this: IWireCryptPlugin; status: IStatus): PAnsiChar; cdecl;
 	IWireCryptPlugin_setKeyPtr = procedure(this: IWireCryptPlugin; status: IStatus; key: ICryptKey); cdecl;
 	IWireCryptPlugin_encryptPtr = procedure(this: IWireCryptPlugin; status: IStatus; length: Cardinal; from: Pointer; to_: Pointer); cdecl;
 	IWireCryptPlugin_decryptPtr = procedure(this: IWireCryptPlugin; status: IStatus; length: Cardinal; from: Pointer; to_: Pointer); cdecl;
+	IWireCryptPlugin_getSpecificDataPtr = function(this: IWireCryptPlugin; status: IStatus; keyType: PAnsiChar; length: CardinalPtr): BytePtr; cdecl;
+	IWireCryptPlugin_setSpecificDataPtr = procedure(this: IWireCryptPlugin; status: IStatus; keyType: PAnsiChar; length: Cardinal; data: BytePtr); cdecl;
 	ICryptKeyCallback_callbackPtr = function(this: ICryptKeyCallback; dataLength: Cardinal; data: Pointer; bufferLength: Cardinal; buffer: Pointer): Cardinal; cdecl;
 	IKeyHolderPlugin_keyCallbackPtr = function(this: IKeyHolderPlugin; status: IStatus; callback: ICryptKeyCallback): Integer; cdecl;
 	IKeyHolderPlugin_keyHandlePtr = function(this: IKeyHolderPlugin; status: IStatus; keyName: PAnsiChar): ICryptKeyCallback; cdecl;
@@ -425,6 +544,15 @@ type
 	IUtil_getClientVersionPtr = function(this: IUtil): Cardinal; cdecl;
 	IUtil_getXpbBuilderPtr = function(this: IUtil; status: IStatus; kind: Cardinal; buf: BytePtr; len: Cardinal): IXpbBuilder; cdecl;
 	IUtil_setOffsetsPtr = function(this: IUtil; status: IStatus; metadata: IMessageMetadata; callback: IOffsetsCallback): Cardinal; cdecl;
+	IUtil_getDecFloat16Ptr = function(this: IUtil; status: IStatus): IDecFloat16; cdecl;
+	IUtil_getDecFloat34Ptr = function(this: IUtil; status: IStatus): IDecFloat34; cdecl;
+	IUtil_decodeTimeTzPtr = procedure(this: IUtil; status: IStatus; timeTz: ISC_TIME_TZPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+	IUtil_decodeTimeStampTzPtr = procedure(this: IUtil; status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+	IUtil_encodeTimeTzPtr = procedure(this: IUtil; status: IStatus; timeTz: ISC_TIME_TZPtr; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar); cdecl;
+	IUtil_encodeTimeStampTzPtr = procedure(this: IUtil; status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: Cardinal; month: Cardinal; day: Cardinal; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar); cdecl;
+	IUtil_getInt128Ptr = function(this: IUtil; status: IStatus): IInt128; cdecl;
+	IUtil_decodeTimeTzExPtr = procedure(this: IUtil; status: IStatus; timeTz: ISC_TIME_TZ_EXPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+	IUtil_decodeTimeStampTzExPtr = procedure(this: IUtil; status: IStatus; timeStampTz: ISC_TIMESTAMP_TZ_EXPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
 	IOffsetsCallback_setOffsetPtr = procedure(this: IOffsetsCallback; status: IStatus; index: Cardinal; offset: Cardinal; nullOffset: Cardinal); cdecl;
 	IXpbBuilder_clearPtr = procedure(this: IXpbBuilder; status: IStatus); cdecl;
 	IXpbBuilder_removeCurrentPtr = procedure(this: IXpbBuilder; status: IStatus); cdecl;
@@ -462,6 +590,8 @@ type
 	ITraceTransaction_getWaitPtr = function(this: ITraceTransaction): Integer; cdecl;
 	ITraceTransaction_getIsolationPtr = function(this: ITraceTransaction): Cardinal; cdecl;
 	ITraceTransaction_getPerfPtr = function(this: ITraceTransaction): PerformanceInfoPtr; cdecl;
+	ITraceTransaction_getInitialIDPtr = function(this: ITraceTransaction): Int64; cdecl;
+	ITraceTransaction_getPreviousIDPtr = function(this: ITraceTransaction): Int64; cdecl;
 	ITraceParams_getCountPtr = function(this: ITraceParams): Cardinal; cdecl;
 	ITraceParams_getParamPtr = function(this: ITraceParams; idx: Cardinal): dscPtr; cdecl;
 	ITraceParams_getTextUTF8Ptr = function(this: ITraceParams; status: IStatus; idx: Cardinal): PAnsiChar; cdecl;
@@ -506,6 +636,7 @@ type
 	ITraceSweepInfo_getNextPtr = function(this: ITraceSweepInfo): Int64; cdecl;
 	ITraceSweepInfo_getPerfPtr = function(this: ITraceSweepInfo): PerformanceInfoPtr; cdecl;
 	ITraceLogWriter_writePtr = function(this: ITraceLogWriter; buf: Pointer; size: Cardinal): Cardinal; cdecl;
+	ITraceLogWriter_write_sPtr = function(this: ITraceLogWriter; status: IStatus; buf: Pointer; size: Cardinal): Cardinal; cdecl;
 	ITraceInitInfo_getConfigTextPtr = function(this: ITraceInitInfo): PAnsiChar; cdecl;
 	ITraceInitInfo_getTraceSessionIDPtr = function(this: ITraceInitInfo): Integer; cdecl;
 	ITraceInitInfo_getTraceSessionNamePtr = function(this: ITraceInitInfo): PAnsiChar; cdecl;
@@ -534,6 +665,7 @@ type
 	ITracePlugin_trace_event_errorPtr = function(this: ITracePlugin; connection: ITraceConnection; status: ITraceStatusVector; function_: PAnsiChar): Boolean; cdecl;
 	ITracePlugin_trace_event_sweepPtr = function(this: ITracePlugin; connection: ITraceDatabaseConnection; sweep: ITraceSweepInfo; sweep_state: Cardinal): Boolean; cdecl;
 	ITracePlugin_trace_func_executePtr = function(this: ITracePlugin; connection: ITraceDatabaseConnection; transaction: ITraceTransaction; function_: ITraceFunction; started: Boolean; func_result: Cardinal): Boolean; cdecl;
+	ITracePlugin_trace_dsql_restartPtr = function(this: ITracePlugin; connection: ITraceDatabaseConnection; transaction: ITraceTransaction; statement: ITraceSQLStatement; number: Cardinal): Boolean; cdecl;
 	ITraceFactory_trace_needsPtr = function(this: ITraceFactory): QWord; cdecl;
 	ITraceFactory_trace_createPtr = function(this: ITraceFactory; status: IStatus; init_info: ITraceInitInfo): ITracePlugin; cdecl;
 	IUdrFunctionFactory_setupPtr = procedure(this: IUdrFunctionFactory; status: IStatus; context: IExternalContext; metadata: IRoutineMetadata; inBuilder: IMetadataBuilder; outBuilder: IMetadataBuilder); cdecl;
@@ -546,6 +678,42 @@ type
 	IUdrPlugin_registerFunctionPtr = procedure(this: IUdrPlugin; status: IStatus; name: PAnsiChar; factory: IUdrFunctionFactory); cdecl;
 	IUdrPlugin_registerProcedurePtr = procedure(this: IUdrPlugin; status: IStatus; name: PAnsiChar; factory: IUdrProcedureFactory); cdecl;
 	IUdrPlugin_registerTriggerPtr = procedure(this: IUdrPlugin; status: IStatus; name: PAnsiChar; factory: IUdrTriggerFactory); cdecl;
+	IDecFloat16_toBcdPtr = procedure(this: IDecFloat16; from: FB_DEC16Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr); cdecl;
+	IDecFloat16_toStringPtr = procedure(this: IDecFloat16; status: IStatus; from: FB_DEC16Ptr; bufferLength: Cardinal; buffer: PAnsiChar); cdecl;
+	IDecFloat16_fromBcdPtr = procedure(this: IDecFloat16; sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC16Ptr); cdecl;
+	IDecFloat16_fromStringPtr = procedure(this: IDecFloat16; status: IStatus; from: PAnsiChar; to_: FB_DEC16Ptr); cdecl;
+	IDecFloat34_toBcdPtr = procedure(this: IDecFloat34; from: FB_DEC34Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr); cdecl;
+	IDecFloat34_toStringPtr = procedure(this: IDecFloat34; status: IStatus; from: FB_DEC34Ptr; bufferLength: Cardinal; buffer: PAnsiChar); cdecl;
+	IDecFloat34_fromBcdPtr = procedure(this: IDecFloat34; sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC34Ptr); cdecl;
+	IDecFloat34_fromStringPtr = procedure(this: IDecFloat34; status: IStatus; from: PAnsiChar; to_: FB_DEC34Ptr); cdecl;
+	IInt128_toStringPtr = procedure(this: IInt128; status: IStatus; from: FB_I128Ptr; scale: Integer; bufferLength: Cardinal; buffer: PAnsiChar); cdecl;
+	IInt128_fromStringPtr = procedure(this: IInt128; status: IStatus; scale: Integer; from: PAnsiChar; to_: FB_I128Ptr); cdecl;
+	IReplicatedField_getNamePtr = function(this: IReplicatedField): PAnsiChar; cdecl;
+	IReplicatedField_getTypePtr = function(this: IReplicatedField): Cardinal; cdecl;
+	IReplicatedField_getSubTypePtr = function(this: IReplicatedField): Integer; cdecl;
+	IReplicatedField_getScalePtr = function(this: IReplicatedField): Integer; cdecl;
+	IReplicatedField_getLengthPtr = function(this: IReplicatedField): Cardinal; cdecl;
+	IReplicatedField_getCharSetPtr = function(this: IReplicatedField): Cardinal; cdecl;
+	IReplicatedField_getDataPtr = function(this: IReplicatedField): Pointer; cdecl;
+	IReplicatedRecord_getCountPtr = function(this: IReplicatedRecord): Cardinal; cdecl;
+	IReplicatedRecord_getFieldPtr = function(this: IReplicatedRecord; index: Cardinal): IReplicatedField; cdecl;
+	IReplicatedRecord_getRawLengthPtr = function(this: IReplicatedRecord): Cardinal; cdecl;
+	IReplicatedRecord_getRawDataPtr = function(this: IReplicatedRecord): BytePtr; cdecl;
+	IReplicatedTransaction_preparePtr = procedure(this: IReplicatedTransaction; status: IStatus); cdecl;
+	IReplicatedTransaction_commitPtr = procedure(this: IReplicatedTransaction; status: IStatus); cdecl;
+	IReplicatedTransaction_rollbackPtr = procedure(this: IReplicatedTransaction; status: IStatus); cdecl;
+	IReplicatedTransaction_startSavepointPtr = procedure(this: IReplicatedTransaction; status: IStatus); cdecl;
+	IReplicatedTransaction_releaseSavepointPtr = procedure(this: IReplicatedTransaction; status: IStatus); cdecl;
+	IReplicatedTransaction_rollbackSavepointPtr = procedure(this: IReplicatedTransaction; status: IStatus); cdecl;
+	IReplicatedTransaction_insertRecordPtr = procedure(this: IReplicatedTransaction; status: IStatus; name: PAnsiChar; record_: IReplicatedRecord); cdecl;
+	IReplicatedTransaction_updateRecordPtr = procedure(this: IReplicatedTransaction; status: IStatus; name: PAnsiChar; orgRecord: IReplicatedRecord; newRecord: IReplicatedRecord); cdecl;
+	IReplicatedTransaction_deleteRecordPtr = procedure(this: IReplicatedTransaction; status: IStatus; name: PAnsiChar; record_: IReplicatedRecord); cdecl;
+	IReplicatedTransaction_executeSqlPtr = procedure(this: IReplicatedTransaction; status: IStatus; sql: PAnsiChar); cdecl;
+	IReplicatedTransaction_executeSqlIntlPtr = procedure(this: IReplicatedTransaction; status: IStatus; charset: Cardinal; sql: PAnsiChar); cdecl;
+	IReplicatedSession_initPtr = function(this: IReplicatedSession; status: IStatus; attachment: IAttachment): Boolean; cdecl;
+	IReplicatedSession_startTransactionPtr = function(this: IReplicatedSession; status: IStatus; transaction: ITransaction; number: Int64): IReplicatedTransaction; cdecl;
+	IReplicatedSession_cleanupTransactionPtr = procedure(this: IReplicatedSession; status: IStatus; number: Int64); cdecl;
+	IReplicatedSession_setSequencePtr = procedure(this: IReplicatedSession; status: IStatus; name: PAnsiChar; value: Int64); cdecl;
 
 	VersionedVTable = class
 		version: NativeInt;
@@ -554,7 +722,7 @@ type
 	IVersioned = class
 		vTable: VersionedVTable;
 
-		const VERSION = 0;
+		const VERSION = 1;
 
 	end;
 
@@ -587,7 +755,7 @@ type
 	end;
 
 	IDisposable = class(IVersioned)
-		const VERSION = 1;
+		const VERSION = 2;
 
 		procedure dispose();
 	end;
@@ -611,9 +779,9 @@ type
 	end;
 
 	IStatus = class(IDisposable)
-		const VERSION = 10;
-		const STATE_WARNINGS = Cardinal(1);
-		const STATE_ERRORS = Cardinal(2);
+		const VERSION = 3;
+		const STATE_WARNINGS = Cardinal($1);
+		const STATE_ERRORS = Cardinal($2);
 		const RESULT_ERROR = Integer(-1);
 		const RESULT_OK = Integer(0);
 		const RESULT_NO_DATA = Integer(1);
@@ -661,7 +829,7 @@ type
 	end;
 
 	IMaster = class(IVersioned)
-		const VERSION = 12;
+		const VERSION = 2;
 
 		function getStatus(): IStatus;
 		function getDispatcher(): IProvider;
@@ -700,7 +868,7 @@ type
 	end;
 
 	IPluginBase = class(IReferenceCounted)
-		const VERSION = 4;
+		const VERSION = 3;
 
 		procedure setOwner(r: IReferenceCounted);
 		function getOwner(): IReferenceCounted;
@@ -724,7 +892,7 @@ type
 	end;
 
 	IPluginSet = class(IReferenceCounted)
-		const VERSION = 7;
+		const VERSION = 3;
 
 		function getName(): PAnsiChar;
 		function getModuleName(): PAnsiChar;
@@ -754,7 +922,7 @@ type
 	end;
 
 	IConfigEntry = class(IReferenceCounted)
-		const VERSION = 7;
+		const VERSION = 3;
 
 		function getName(): PAnsiChar;
 		function getValue(): PAnsiChar;
@@ -782,7 +950,7 @@ type
 	end;
 
 	IConfig = class(IReferenceCounted)
-		const VERSION = 5;
+		const VERSION = 3;
 
 		function find(status: IStatus; name: PAnsiChar): IConfigEntry;
 		function findValue(status: IStatus; name: PAnsiChar; value: PAnsiChar): IConfigEntry;
@@ -804,15 +972,17 @@ type
 		asInteger: IFirebirdConf_asIntegerPtr;
 		asString: IFirebirdConf_asStringPtr;
 		asBoolean: IFirebirdConf_asBooleanPtr;
+		getVersion: IFirebirdConf_getVersionPtr;
 	end;
 
 	IFirebirdConf = class(IReferenceCounted)
-		const VERSION = 6;
+		const VERSION = 4;
 
 		function getKey(name: PAnsiChar): Cardinal;
 		function asInteger(key: Cardinal): Int64;
 		function asString(key: Cardinal): PAnsiChar;
 		function asBoolean(key: Cardinal): Boolean;
+		function getVersion(status: IStatus): Cardinal;
 	end;
 
 	IFirebirdConfImpl = class(IFirebirdConf)
@@ -824,6 +994,7 @@ type
 		function asInteger(key: Cardinal): Int64; virtual; abstract;
 		function asString(key: Cardinal): PAnsiChar; virtual; abstract;
 		function asBoolean(key: Cardinal): Boolean; virtual; abstract;
+		function getVersion(status: IStatus): Cardinal; virtual; abstract;
 	end;
 
 	PluginConfigVTable = class(ReferenceCountedVTable)
@@ -834,7 +1005,7 @@ type
 	end;
 
 	IPluginConfig = class(IReferenceCounted)
-		const VERSION = 6;
+		const VERSION = 3;
 
 		function getConfigFileName(): PAnsiChar;
 		function getDefaultConfig(status: IStatus): IConfig;
@@ -858,7 +1029,7 @@ type
 	end;
 
 	IPluginFactory = class(IVersioned)
-		const VERSION = 1;
+		const VERSION = 2;
 
 		function createPlugin(status: IStatus; factoryParameter: IPluginConfig): IPluginBase;
 	end;
@@ -875,7 +1046,7 @@ type
 	end;
 
 	IPluginModule = class(IVersioned)
-		const VERSION = 2;
+		const VERSION = 3;
 
 		procedure doClean();
 		procedure threadDetach();
@@ -898,7 +1069,7 @@ type
 	end;
 
 	IPluginManager = class(IVersioned)
-		const VERSION = 6;
+		const VERSION = 2;
 		const TYPE_PROVIDER = Cardinal(1);
 		const TYPE_FIRST_NON_LIB = Cardinal(2);
 		const TYPE_AUTH_SERVER = Cardinal(3);
@@ -909,7 +1080,8 @@ type
 		const TYPE_WIRE_CRYPT = Cardinal(8);
 		const TYPE_DB_CRYPT = Cardinal(9);
 		const TYPE_KEY_HOLDER = Cardinal(10);
-		const TYPE_COUNT = Cardinal(11);
+		const TYPE_REPLICATOR = Cardinal(11);
+		const TYPE_COUNT = Cardinal(12);
 
 		procedure registerPluginFactory(pluginType: Cardinal; defaultName: PAnsiChar; factory: IPluginFactory);
 		procedure registerModule(cleanup: IPluginModule);
@@ -938,7 +1110,7 @@ type
 	end;
 
 	ICryptKey = class(IVersioned)
-		const VERSION = 4;
+		const VERSION = 2;
 
 		procedure setSymmetric(status: IStatus; type_: PAnsiChar; keyLength: Cardinal; key: Pointer);
 		procedure setAsymmetric(status: IStatus; type_: PAnsiChar; encryptKeyLength: Cardinal; encryptKey: Pointer; decryptKeyLength: Cardinal; decryptKey: Pointer);
@@ -962,10 +1134,11 @@ type
 		getPluginConfig: IConfigManager_getPluginConfigPtr;
 		getInstallDirectory: IConfigManager_getInstallDirectoryPtr;
 		getRootDirectory: IConfigManager_getRootDirectoryPtr;
+		getDefaultSecurityDb: IConfigManager_getDefaultSecurityDbPtr;
 	end;
 
 	IConfigManager = class(IVersioned)
-		const VERSION = 6;
+		const VERSION = 3;
 		const DIR_BIN = Cardinal(0);
 		const DIR_SBIN = Cardinal(1);
 		const DIR_CONF = Cardinal(2);
@@ -983,7 +1156,8 @@ type
 		const DIR_LOG = Cardinal(14);
 		const DIR_GUARD = Cardinal(15);
 		const DIR_PLUGINS = Cardinal(16);
-		const DIR_COUNT = Cardinal(17);
+		const DIR_TZDATA = Cardinal(17);
+		const DIR_COUNT = Cardinal(18);
 
 		function getDirectory(code: Cardinal): PAnsiChar;
 		function getFirebirdConf(): IFirebirdConf;
@@ -991,6 +1165,7 @@ type
 		function getPluginConfig(configuredPlugin: PAnsiChar): IConfig;
 		function getInstallDirectory(): PAnsiChar;
 		function getRootDirectory(): PAnsiChar;
+		function getDefaultSecurityDb(): PAnsiChar;
 	end;
 
 	IConfigManagerImpl = class(IConfigManager)
@@ -1002,6 +1177,7 @@ type
 		function getPluginConfig(configuredPlugin: PAnsiChar): IConfig; virtual; abstract;
 		function getInstallDirectory(): PAnsiChar; virtual; abstract;
 		function getRootDirectory(): PAnsiChar; virtual; abstract;
+		function getDefaultSecurityDb(): PAnsiChar; virtual; abstract;
 	end;
 
 	EventCallbackVTable = class(ReferenceCountedVTable)
@@ -1026,20 +1202,24 @@ type
 		getInfo: IBlob_getInfoPtr;
 		getSegment: IBlob_getSegmentPtr;
 		putSegment: IBlob_putSegmentPtr;
+		deprecatedCancel: IBlob_deprecatedCancelPtr;
+		deprecatedClose: IBlob_deprecatedClosePtr;
+		seek: IBlob_seekPtr;
 		cancel: IBlob_cancelPtr;
 		close: IBlob_closePtr;
-		seek: IBlob_seekPtr;
 	end;
 
 	IBlob = class(IReferenceCounted)
-		const VERSION = 8;
+		const VERSION = 4;
 
 		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
 		function getSegment(status: IStatus; bufferLength: Cardinal; buffer: Pointer; segmentLength: CardinalPtr): Integer;
 		procedure putSegment(status: IStatus; length: Cardinal; buffer: Pointer);
+		procedure deprecatedCancel(status: IStatus);
+		procedure deprecatedClose(status: IStatus);
+		function seek(status: IStatus; mode: Integer; offset: Integer): Integer;
 		procedure cancel(status: IStatus);
 		procedure close(status: IStatus);
-		function seek(status: IStatus; mode: Integer; offset: Integer): Integer;
 	end;
 
 	IBlobImpl = class(IBlob)
@@ -1050,37 +1230,45 @@ type
 		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); virtual; abstract;
 		function getSegment(status: IStatus; bufferLength: Cardinal; buffer: Pointer; segmentLength: CardinalPtr): Integer; virtual; abstract;
 		procedure putSegment(status: IStatus; length: Cardinal; buffer: Pointer); virtual; abstract;
+		procedure deprecatedCancel(status: IStatus); virtual; abstract;
+		procedure deprecatedClose(status: IStatus); virtual; abstract;
+		function seek(status: IStatus; mode: Integer; offset: Integer): Integer; virtual; abstract;
 		procedure cancel(status: IStatus); virtual; abstract;
 		procedure close(status: IStatus); virtual; abstract;
-		function seek(status: IStatus; mode: Integer; offset: Integer): Integer; virtual; abstract;
 	end;
 
 	TransactionVTable = class(ReferenceCountedVTable)
 		getInfo: ITransaction_getInfoPtr;
 		prepare: ITransaction_preparePtr;
-		commit: ITransaction_commitPtr;
+		deprecatedCommit: ITransaction_deprecatedCommitPtr;
 		commitRetaining: ITransaction_commitRetainingPtr;
-		rollback: ITransaction_rollbackPtr;
+		deprecatedRollback: ITransaction_deprecatedRollbackPtr;
 		rollbackRetaining: ITransaction_rollbackRetainingPtr;
-		disconnect: ITransaction_disconnectPtr;
+		deprecatedDisconnect: ITransaction_deprecatedDisconnectPtr;
 		join: ITransaction_joinPtr;
 		validate: ITransaction_validatePtr;
 		enterDtc: ITransaction_enterDtcPtr;
+		commit: ITransaction_commitPtr;
+		rollback: ITransaction_rollbackPtr;
+		disconnect: ITransaction_disconnectPtr;
 	end;
 
 	ITransaction = class(IReferenceCounted)
-		const VERSION = 12;
+		const VERSION = 4;
 
 		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
 		procedure prepare(status: IStatus; msgLength: Cardinal; message: BytePtr);
-		procedure commit(status: IStatus);
+		procedure deprecatedCommit(status: IStatus);
 		procedure commitRetaining(status: IStatus);
-		procedure rollback(status: IStatus);
+		procedure deprecatedRollback(status: IStatus);
 		procedure rollbackRetaining(status: IStatus);
-		procedure disconnect(status: IStatus);
+		procedure deprecatedDisconnect(status: IStatus);
 		function join(status: IStatus; transaction: ITransaction): ITransaction;
 		function validate(status: IStatus; attachment: IAttachment): ITransaction;
 		function enterDtc(status: IStatus): ITransaction;
+		procedure commit(status: IStatus);
+		procedure rollback(status: IStatus);
+		procedure disconnect(status: IStatus);
 	end;
 
 	ITransactionImpl = class(ITransaction)
@@ -1090,14 +1278,17 @@ type
 		function release(): Integer; virtual; abstract;
 		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); virtual; abstract;
 		procedure prepare(status: IStatus; msgLength: Cardinal; message: BytePtr); virtual; abstract;
-		procedure commit(status: IStatus); virtual; abstract;
+		procedure deprecatedCommit(status: IStatus); virtual; abstract;
 		procedure commitRetaining(status: IStatus); virtual; abstract;
-		procedure rollback(status: IStatus); virtual; abstract;
+		procedure deprecatedRollback(status: IStatus); virtual; abstract;
 		procedure rollbackRetaining(status: IStatus); virtual; abstract;
-		procedure disconnect(status: IStatus); virtual; abstract;
+		procedure deprecatedDisconnect(status: IStatus); virtual; abstract;
 		function join(status: IStatus; transaction: ITransaction): ITransaction; virtual; abstract;
 		function validate(status: IStatus; attachment: IAttachment): ITransaction; virtual; abstract;
 		function enterDtc(status: IStatus): ITransaction; virtual; abstract;
+		procedure commit(status: IStatus); virtual; abstract;
+		procedure rollback(status: IStatus); virtual; abstract;
+		procedure disconnect(status: IStatus); virtual; abstract;
 	end;
 
 	MessageMetadataVTable = class(ReferenceCountedVTable)
@@ -1116,10 +1307,12 @@ type
 		getNullOffset: IMessageMetadata_getNullOffsetPtr;
 		getBuilder: IMessageMetadata_getBuilderPtr;
 		getMessageLength: IMessageMetadata_getMessageLengthPtr;
+		getAlignment: IMessageMetadata_getAlignmentPtr;
+		getAlignedLength: IMessageMetadata_getAlignedLengthPtr;
 	end;
 
 	IMessageMetadata = class(IReferenceCounted)
-		const VERSION = 17;
+		const VERSION = 4;
 
 		function getCount(status: IStatus): Cardinal;
 		function getField(status: IStatus; index: Cardinal): PAnsiChar;
@@ -1136,6 +1329,8 @@ type
 		function getNullOffset(status: IStatus; index: Cardinal): Cardinal;
 		function getBuilder(status: IStatus): IMetadataBuilder;
 		function getMessageLength(status: IStatus): Cardinal;
+		function getAlignment(status: IStatus): Cardinal;
+		function getAlignedLength(status: IStatus): Cardinal;
 	end;
 
 	IMessageMetadataImpl = class(IMessageMetadata)
@@ -1158,6 +1353,8 @@ type
 		function getNullOffset(status: IStatus; index: Cardinal): Cardinal; virtual; abstract;
 		function getBuilder(status: IStatus): IMetadataBuilder; virtual; abstract;
 		function getMessageLength(status: IStatus): Cardinal; virtual; abstract;
+		function getAlignment(status: IStatus): Cardinal; virtual; abstract;
+		function getAlignedLength(status: IStatus): Cardinal; virtual; abstract;
 	end;
 
 	MetadataBuilderVTable = class(ReferenceCountedVTable)
@@ -1171,10 +1368,14 @@ type
 		remove: IMetadataBuilder_removePtr;
 		addField: IMetadataBuilder_addFieldPtr;
 		getMetadata: IMetadataBuilder_getMetadataPtr;
+		setField: IMetadataBuilder_setFieldPtr;
+		setRelation: IMetadataBuilder_setRelationPtr;
+		setOwner: IMetadataBuilder_setOwnerPtr;
+		setAlias: IMetadataBuilder_setAliasPtr;
 	end;
 
 	IMetadataBuilder = class(IReferenceCounted)
-		const VERSION = 12;
+		const VERSION = 4;
 
 		procedure setType(status: IStatus; index: Cardinal; type_: Cardinal);
 		procedure setSubType(status: IStatus; index: Cardinal; subType: Integer);
@@ -1186,6 +1387,10 @@ type
 		procedure remove(status: IStatus; index: Cardinal);
 		function addField(status: IStatus): Cardinal;
 		function getMetadata(status: IStatus): IMessageMetadata;
+		procedure setField(status: IStatus; index: Cardinal; field: PAnsiChar);
+		procedure setRelation(status: IStatus; index: Cardinal; relation: PAnsiChar);
+		procedure setOwner(status: IStatus; index: Cardinal; owner: PAnsiChar);
+		procedure setAlias(status: IStatus; index: Cardinal; alias: PAnsiChar);
 	end;
 
 	IMetadataBuilderImpl = class(IMetadataBuilder)
@@ -1203,6 +1408,10 @@ type
 		procedure remove(status: IStatus; index: Cardinal); virtual; abstract;
 		function addField(status: IStatus): Cardinal; virtual; abstract;
 		function getMetadata(status: IStatus): IMessageMetadata; virtual; abstract;
+		procedure setField(status: IStatus; index: Cardinal; field: PAnsiChar); virtual; abstract;
+		procedure setRelation(status: IStatus; index: Cardinal; relation: PAnsiChar); virtual; abstract;
+		procedure setOwner(status: IStatus; index: Cardinal; owner: PAnsiChar); virtual; abstract;
+		procedure setAlias(status: IStatus; index: Cardinal; alias: PAnsiChar); virtual; abstract;
 	end;
 
 	ResultSetVTable = class(ReferenceCountedVTable)
@@ -1215,12 +1424,13 @@ type
 		isEof: IResultSet_isEofPtr;
 		isBof: IResultSet_isBofPtr;
 		getMetadata: IResultSet_getMetadataPtr;
-		close: IResultSet_closePtr;
+		deprecatedClose: IResultSet_deprecatedClosePtr;
 		setDelayedOutputFormat: IResultSet_setDelayedOutputFormatPtr;
+		close: IResultSet_closePtr;
 	end;
 
 	IResultSet = class(IReferenceCounted)
-		const VERSION = 13;
+		const VERSION = 4;
 
 		function fetchNext(status: IStatus; message: Pointer): Integer;
 		function fetchPrior(status: IStatus; message: Pointer): Integer;
@@ -1231,8 +1441,9 @@ type
 		function isEof(status: IStatus): Boolean;
 		function isBof(status: IStatus): Boolean;
 		function getMetadata(status: IStatus): IMessageMetadata;
-		procedure close(status: IStatus);
+		procedure deprecatedClose(status: IStatus);
 		procedure setDelayedOutputFormat(status: IStatus; format: IMessageMetadata);
+		procedure close(status: IStatus);
 	end;
 
 	IResultSetImpl = class(IResultSet)
@@ -1249,8 +1460,9 @@ type
 		function isEof(status: IStatus): Boolean; virtual; abstract;
 		function isBof(status: IStatus): Boolean; virtual; abstract;
 		function getMetadata(status: IStatus): IMessageMetadata; virtual; abstract;
-		procedure close(status: IStatus); virtual; abstract;
+		procedure deprecatedClose(status: IStatus); virtual; abstract;
 		procedure setDelayedOutputFormat(status: IStatus; format: IMessageMetadata); virtual; abstract;
+		procedure close(status: IStatus); virtual; abstract;
 	end;
 
 	StatementVTable = class(ReferenceCountedVTable)
@@ -1263,25 +1475,29 @@ type
 		execute: IStatement_executePtr;
 		openCursor: IStatement_openCursorPtr;
 		setCursorName: IStatement_setCursorNamePtr;
-		free: IStatement_freePtr;
+		deprecatedFree: IStatement_deprecatedFreePtr;
 		getFlags: IStatement_getFlagsPtr;
+		getTimeout: IStatement_getTimeoutPtr;
+		setTimeout: IStatement_setTimeoutPtr;
+		createBatch: IStatement_createBatchPtr;
+		free: IStatement_freePtr;
 	end;
 
 	IStatement = class(IReferenceCounted)
-		const VERSION = 13;
-		const PREPARE_PREFETCH_NONE = Cardinal(0);
-		const PREPARE_PREFETCH_TYPE = Cardinal(1);
-		const PREPARE_PREFETCH_INPUT_PARAMETERS = Cardinal(2);
-		const PREPARE_PREFETCH_OUTPUT_PARAMETERS = Cardinal(4);
-		const PREPARE_PREFETCH_LEGACY_PLAN = Cardinal(8);
-		const PREPARE_PREFETCH_DETAILED_PLAN = Cardinal(16);
-		const PREPARE_PREFETCH_AFFECTED_RECORDS = Cardinal(32);
-		const PREPARE_PREFETCH_FLAGS = Cardinal(64);
+		const VERSION = 5;
+		const PREPARE_PREFETCH_NONE = Cardinal($0);
+		const PREPARE_PREFETCH_TYPE = Cardinal($1);
+		const PREPARE_PREFETCH_INPUT_PARAMETERS = Cardinal($2);
+		const PREPARE_PREFETCH_OUTPUT_PARAMETERS = Cardinal($4);
+		const PREPARE_PREFETCH_LEGACY_PLAN = Cardinal($8);
+		const PREPARE_PREFETCH_DETAILED_PLAN = Cardinal($10);
+		const PREPARE_PREFETCH_AFFECTED_RECORDS = Cardinal($20);
+		const PREPARE_PREFETCH_FLAGS = Cardinal($40);
 		const PREPARE_PREFETCH_METADATA = Cardinal(IStatement.PREPARE_PREFETCH_TYPE or IStatement.PREPARE_PREFETCH_FLAGS or IStatement.PREPARE_PREFETCH_INPUT_PARAMETERS or IStatement.PREPARE_PREFETCH_OUTPUT_PARAMETERS);
 		const PREPARE_PREFETCH_ALL = Cardinal(IStatement.PREPARE_PREFETCH_METADATA or IStatement.PREPARE_PREFETCH_LEGACY_PLAN or IStatement.PREPARE_PREFETCH_DETAILED_PLAN or IStatement.PREPARE_PREFETCH_AFFECTED_RECORDS);
-		const FLAG_HAS_CURSOR = Cardinal(1);
-		const FLAG_REPEAT_EXECUTE = Cardinal(2);
-		const CURSOR_TYPE_SCROLLABLE = Cardinal(1);
+		const FLAG_HAS_CURSOR = Cardinal($1);
+		const FLAG_REPEAT_EXECUTE = Cardinal($2);
+		const CURSOR_TYPE_SCROLLABLE = Cardinal($1);
 
 		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
 		function getType(status: IStatus): Cardinal;
@@ -1292,8 +1508,12 @@ type
 		function execute(status: IStatus; transaction: ITransaction; inMetadata: IMessageMetadata; inBuffer: Pointer; outMetadata: IMessageMetadata; outBuffer: Pointer): ITransaction;
 		function openCursor(status: IStatus; transaction: ITransaction; inMetadata: IMessageMetadata; inBuffer: Pointer; outMetadata: IMessageMetadata; flags: Cardinal): IResultSet;
 		procedure setCursorName(status: IStatus; name: PAnsiChar);
-		procedure free(status: IStatus);
+		procedure deprecatedFree(status: IStatus);
 		function getFlags(status: IStatus): Cardinal;
+		function getTimeout(status: IStatus): Cardinal;
+		procedure setTimeout(status: IStatus; timeOut: Cardinal);
+		function createBatch(status: IStatus; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch;
+		procedure free(status: IStatus);
 	end;
 
 	IStatementImpl = class(IStatement)
@@ -1310,8 +1530,135 @@ type
 		function execute(status: IStatus; transaction: ITransaction; inMetadata: IMessageMetadata; inBuffer: Pointer; outMetadata: IMessageMetadata; outBuffer: Pointer): ITransaction; virtual; abstract;
 		function openCursor(status: IStatus; transaction: ITransaction; inMetadata: IMessageMetadata; inBuffer: Pointer; outMetadata: IMessageMetadata; flags: Cardinal): IResultSet; virtual; abstract;
 		procedure setCursorName(status: IStatus; name: PAnsiChar); virtual; abstract;
-		procedure free(status: IStatus); virtual; abstract;
+		procedure deprecatedFree(status: IStatus); virtual; abstract;
 		function getFlags(status: IStatus): Cardinal; virtual; abstract;
+		function getTimeout(status: IStatus): Cardinal; virtual; abstract;
+		procedure setTimeout(status: IStatus; timeOut: Cardinal); virtual; abstract;
+		function createBatch(status: IStatus; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch; virtual; abstract;
+		procedure free(status: IStatus); virtual; abstract;
+	end;
+
+	BatchVTable = class(ReferenceCountedVTable)
+		add: IBatch_addPtr;
+		addBlob: IBatch_addBlobPtr;
+		appendBlobData: IBatch_appendBlobDataPtr;
+		addBlobStream: IBatch_addBlobStreamPtr;
+		registerBlob: IBatch_registerBlobPtr;
+		execute: IBatch_executePtr;
+		cancel: IBatch_cancelPtr;
+		getBlobAlignment: IBatch_getBlobAlignmentPtr;
+		getMetadata: IBatch_getMetadataPtr;
+		setDefaultBpb: IBatch_setDefaultBpbPtr;
+		deprecatedClose: IBatch_deprecatedClosePtr;
+		close: IBatch_closePtr;
+		getInfo: IBatch_getInfoPtr;
+	end;
+
+	IBatch = class(IReferenceCounted)
+		const VERSION = 4;
+		const VERSION1 = Byte(1);
+		const TAG_MULTIERROR = Byte(1);
+		const TAG_RECORD_COUNTS = Byte(2);
+		const TAG_BUFFER_BYTES_SIZE = Byte(3);
+		const TAG_BLOB_POLICY = Byte(4);
+		const TAG_DETAILED_ERRORS = Byte(5);
+		const INF_BUFFER_BYTES_SIZE = Byte(10);
+		const INF_DATA_BYTES_SIZE = Byte(11);
+		const INF_BLOBS_BYTES_SIZE = Byte(12);
+		const INF_BLOB_ALIGNMENT = Byte(13);
+		const INF_BLOB_HEADER = Byte(14);
+		const BLOB_NONE = Byte(0);
+		const BLOB_ID_ENGINE = Byte(1);
+		const BLOB_ID_USER = Byte(2);
+		const BLOB_STREAM = Byte(3);
+		const BLOB_SEGHDR_ALIGN = Cardinal(2);
+
+		procedure add(status: IStatus; count: Cardinal; inBuffer: Pointer);
+		procedure addBlob(status: IStatus; length: Cardinal; inBuffer: Pointer; blobId: ISC_QUADPtr; parLength: Cardinal; par: BytePtr);
+		procedure appendBlobData(status: IStatus; length: Cardinal; inBuffer: Pointer);
+		procedure addBlobStream(status: IStatus; length: Cardinal; inBuffer: Pointer);
+		procedure registerBlob(status: IStatus; existingBlob: ISC_QUADPtr; blobId: ISC_QUADPtr);
+		function execute(status: IStatus; transaction: ITransaction): IBatchCompletionState;
+		procedure cancel(status: IStatus);
+		function getBlobAlignment(status: IStatus): Cardinal;
+		function getMetadata(status: IStatus): IMessageMetadata;
+		procedure setDefaultBpb(status: IStatus; parLength: Cardinal; par: BytePtr);
+		procedure deprecatedClose(status: IStatus);
+		procedure close(status: IStatus);
+		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
+	end;
+
+	IBatchImpl = class(IBatch)
+		constructor create;
+
+		procedure addRef(); virtual; abstract;
+		function release(): Integer; virtual; abstract;
+		procedure add(status: IStatus; count: Cardinal; inBuffer: Pointer); virtual; abstract;
+		procedure addBlob(status: IStatus; length: Cardinal; inBuffer: Pointer; blobId: ISC_QUADPtr; parLength: Cardinal; par: BytePtr); virtual; abstract;
+		procedure appendBlobData(status: IStatus; length: Cardinal; inBuffer: Pointer); virtual; abstract;
+		procedure addBlobStream(status: IStatus; length: Cardinal; inBuffer: Pointer); virtual; abstract;
+		procedure registerBlob(status: IStatus; existingBlob: ISC_QUADPtr; blobId: ISC_QUADPtr); virtual; abstract;
+		function execute(status: IStatus; transaction: ITransaction): IBatchCompletionState; virtual; abstract;
+		procedure cancel(status: IStatus); virtual; abstract;
+		function getBlobAlignment(status: IStatus): Cardinal; virtual; abstract;
+		function getMetadata(status: IStatus): IMessageMetadata; virtual; abstract;
+		procedure setDefaultBpb(status: IStatus; parLength: Cardinal; par: BytePtr); virtual; abstract;
+		procedure deprecatedClose(status: IStatus); virtual; abstract;
+		procedure close(status: IStatus); virtual; abstract;
+		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); virtual; abstract;
+	end;
+
+	BatchCompletionStateVTable = class(DisposableVTable)
+		getSize: IBatchCompletionState_getSizePtr;
+		getState: IBatchCompletionState_getStatePtr;
+		findError: IBatchCompletionState_findErrorPtr;
+		getStatus: IBatchCompletionState_getStatusPtr;
+	end;
+
+	IBatchCompletionState = class(IDisposable)
+		const VERSION = 3;
+		const EXECUTE_FAILED = Integer(-1);
+		const SUCCESS_NO_INFO = Integer(-2);
+		const NO_MORE_ERRORS = Cardinal($ffffffff);
+
+		function getSize(status: IStatus): Cardinal;
+		function getState(status: IStatus; pos: Cardinal): Integer;
+		function findError(status: IStatus; pos: Cardinal): Cardinal;
+		procedure getStatus(status: IStatus; to_: IStatus; pos: Cardinal);
+	end;
+
+	IBatchCompletionStateImpl = class(IBatchCompletionState)
+		constructor create;
+
+		procedure dispose(); virtual; abstract;
+		function getSize(status: IStatus): Cardinal; virtual; abstract;
+		function getState(status: IStatus; pos: Cardinal): Integer; virtual; abstract;
+		function findError(status: IStatus; pos: Cardinal): Cardinal; virtual; abstract;
+		procedure getStatus(status: IStatus; to_: IStatus; pos: Cardinal); virtual; abstract;
+	end;
+
+	ReplicatorVTable = class(ReferenceCountedVTable)
+		process: IReplicator_processPtr;
+		deprecatedClose: IReplicator_deprecatedClosePtr;
+		close: IReplicator_closePtr;
+	end;
+
+	IReplicator = class(IReferenceCounted)
+		const VERSION = 4;
+
+		procedure process(status: IStatus; length: Cardinal; data: BytePtr);
+		procedure deprecatedClose(status: IStatus);
+		procedure close(status: IStatus);
+	end;
+
+	IReplicatorImpl = class(IReplicator)
+		constructor create;
+
+		procedure addRef(); virtual; abstract;
+		function release(): Integer; virtual; abstract;
+		procedure process(status: IStatus; length: Cardinal; data: BytePtr); virtual; abstract;
+		procedure deprecatedClose(status: IStatus); virtual; abstract;
+		procedure close(status: IStatus); virtual; abstract;
 	end;
 
 	RequestVTable = class(ReferenceCountedVTable)
@@ -1321,18 +1668,20 @@ type
 		start: IRequest_startPtr;
 		startAndSend: IRequest_startAndSendPtr;
 		unwind: IRequest_unwindPtr;
+		deprecatedFree: IRequest_deprecatedFreePtr;
 		free: IRequest_freePtr;
 	end;
 
 	IRequest = class(IReferenceCounted)
-		const VERSION = 9;
+		const VERSION = 4;
 
-		procedure receive(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr);
-		procedure send(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr);
+		procedure receive(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer);
+		procedure send(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer);
 		procedure getInfo(status: IStatus; level: Integer; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
 		procedure start(status: IStatus; tra: ITransaction; level: Integer);
-		procedure startAndSend(status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr);
+		procedure startAndSend(status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer);
 		procedure unwind(status: IStatus; level: Integer);
+		procedure deprecatedFree(status: IStatus);
 		procedure free(status: IStatus);
 	end;
 
@@ -1341,22 +1690,25 @@ type
 
 		procedure addRef(); virtual; abstract;
 		function release(): Integer; virtual; abstract;
-		procedure receive(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); virtual; abstract;
-		procedure send(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); virtual; abstract;
+		procedure receive(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); virtual; abstract;
+		procedure send(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); virtual; abstract;
 		procedure getInfo(status: IStatus; level: Integer; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); virtual; abstract;
 		procedure start(status: IStatus; tra: ITransaction; level: Integer); virtual; abstract;
-		procedure startAndSend(status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); virtual; abstract;
+		procedure startAndSend(status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); virtual; abstract;
 		procedure unwind(status: IStatus; level: Integer); virtual; abstract;
+		procedure deprecatedFree(status: IStatus); virtual; abstract;
 		procedure free(status: IStatus); virtual; abstract;
 	end;
 
 	EventsVTable = class(ReferenceCountedVTable)
+		deprecatedCancel: IEvents_deprecatedCancelPtr;
 		cancel: IEvents_cancelPtr;
 	end;
 
 	IEvents = class(IReferenceCounted)
-		const VERSION = 3;
+		const VERSION = 4;
 
+		procedure deprecatedCancel(status: IStatus);
 		procedure cancel(status: IStatus);
 	end;
 
@@ -1365,6 +1717,7 @@ type
 
 		procedure addRef(); virtual; abstract;
 		function release(): Integer; virtual; abstract;
+		procedure deprecatedCancel(status: IStatus); virtual; abstract;
 		procedure cancel(status: IStatus); virtual; abstract;
 	end;
 
@@ -1385,12 +1738,20 @@ type
 		queEvents: IAttachment_queEventsPtr;
 		cancelOperation: IAttachment_cancelOperationPtr;
 		ping: IAttachment_pingPtr;
+		deprecatedDetach: IAttachment_deprecatedDetachPtr;
+		deprecatedDropDatabase: IAttachment_deprecatedDropDatabasePtr;
+		getIdleTimeout: IAttachment_getIdleTimeoutPtr;
+		setIdleTimeout: IAttachment_setIdleTimeoutPtr;
+		getStatementTimeout: IAttachment_getStatementTimeoutPtr;
+		setStatementTimeout: IAttachment_setStatementTimeoutPtr;
+		createBatch: IAttachment_createBatchPtr;
+		createReplicator: IAttachment_createReplicatorPtr;
 		detach: IAttachment_detachPtr;
 		dropDatabase: IAttachment_dropDatabasePtr;
 	end;
 
 	IAttachment = class(IReferenceCounted)
-		const VERSION = 20;
+		const VERSION = 5;
 
 		procedure getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
 		function startTransaction(status: IStatus; tpbLength: Cardinal; tpb: BytePtr): ITransaction;
@@ -1408,6 +1769,14 @@ type
 		function queEvents(status: IStatus; callback: IEventCallback; length: Cardinal; events: BytePtr): IEvents;
 		procedure cancelOperation(status: IStatus; option: Integer);
 		procedure ping(status: IStatus);
+		procedure deprecatedDetach(status: IStatus);
+		procedure deprecatedDropDatabase(status: IStatus);
+		function getIdleTimeout(status: IStatus): Cardinal;
+		procedure setIdleTimeout(status: IStatus; timeOut: Cardinal);
+		function getStatementTimeout(status: IStatus): Cardinal;
+		procedure setStatementTimeout(status: IStatus; timeOut: Cardinal);
+		function createBatch(status: IStatus; transaction: ITransaction; stmtLength: Cardinal; sqlStmt: PAnsiChar; dialect: Cardinal; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch;
+		function createReplicator(status: IStatus): IReplicator;
 		procedure detach(status: IStatus);
 		procedure dropDatabase(status: IStatus);
 	end;
@@ -1433,22 +1802,34 @@ type
 		function queEvents(status: IStatus; callback: IEventCallback; length: Cardinal; events: BytePtr): IEvents; virtual; abstract;
 		procedure cancelOperation(status: IStatus; option: Integer); virtual; abstract;
 		procedure ping(status: IStatus); virtual; abstract;
+		procedure deprecatedDetach(status: IStatus); virtual; abstract;
+		procedure deprecatedDropDatabase(status: IStatus); virtual; abstract;
+		function getIdleTimeout(status: IStatus): Cardinal; virtual; abstract;
+		procedure setIdleTimeout(status: IStatus; timeOut: Cardinal); virtual; abstract;
+		function getStatementTimeout(status: IStatus): Cardinal; virtual; abstract;
+		procedure setStatementTimeout(status: IStatus; timeOut: Cardinal); virtual; abstract;
+		function createBatch(status: IStatus; transaction: ITransaction; stmtLength: Cardinal; sqlStmt: PAnsiChar; dialect: Cardinal; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch; virtual; abstract;
+		function createReplicator(status: IStatus): IReplicator; virtual; abstract;
 		procedure detach(status: IStatus); virtual; abstract;
 		procedure dropDatabase(status: IStatus); virtual; abstract;
 	end;
 
 	ServiceVTable = class(ReferenceCountedVTable)
-		detach: IService_detachPtr;
+		deprecatedDetach: IService_deprecatedDetachPtr;
 		query: IService_queryPtr;
 		start: IService_startPtr;
+		detach: IService_detachPtr;
+		cancel: IService_cancelPtr;
 	end;
 
 	IService = class(IReferenceCounted)
 		const VERSION = 5;
 
-		procedure detach(status: IStatus);
+		procedure deprecatedDetach(status: IStatus);
 		procedure query(status: IStatus; sendLength: Cardinal; sendItems: BytePtr; receiveLength: Cardinal; receiveItems: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
 		procedure start(status: IStatus; spbLength: Cardinal; spb: BytePtr);
+		procedure detach(status: IStatus);
+		procedure cancel(status: IStatus);
 	end;
 
 	IServiceImpl = class(IService)
@@ -1456,9 +1837,11 @@ type
 
 		procedure addRef(); virtual; abstract;
 		function release(): Integer; virtual; abstract;
-		procedure detach(status: IStatus); virtual; abstract;
+		procedure deprecatedDetach(status: IStatus); virtual; abstract;
 		procedure query(status: IStatus; sendLength: Cardinal; sendItems: BytePtr; receiveLength: Cardinal; receiveItems: BytePtr; bufferLength: Cardinal; buffer: BytePtr); virtual; abstract;
 		procedure start(status: IStatus; spbLength: Cardinal; spb: BytePtr); virtual; abstract;
+		procedure detach(status: IStatus); virtual; abstract;
+		procedure cancel(status: IStatus); virtual; abstract;
 	end;
 
 	ProviderVTable = class(PluginBaseVTable)
@@ -1470,7 +1853,7 @@ type
 	end;
 
 	IProvider = class(IPluginBase)
-		const VERSION = 9;
+		const VERSION = 4;
 
 		function attachDatabase(status: IStatus; fileName: PAnsiChar; dpbLength: Cardinal; dpb: BytePtr): IAttachment;
 		function createDatabase(status: IStatus; fileName: PAnsiChar; dpbLength: Cardinal; dpb: BytePtr): IAttachment;
@@ -1500,7 +1883,7 @@ type
 	end;
 
 	IDtcStart = class(IDisposable)
-		const VERSION = 4;
+		const VERSION = 3;
 
 		procedure addAttachment(status: IStatus; att: IAttachment);
 		procedure addWithTpb(status: IStatus; att: IAttachment; length: Cardinal; tpb: BytePtr);
@@ -1564,7 +1947,7 @@ type
 	end;
 
 	IWriter = class(IVersioned)
-		const VERSION = 4;
+		const VERSION = 2;
 
 		procedure reset();
 		procedure add(status: IStatus; name: PAnsiChar);
@@ -1589,7 +1972,7 @@ type
 	end;
 
 	IServerBlock = class(IVersioned)
-		const VERSION = 4;
+		const VERSION = 2;
 
 		function getLogin(): PAnsiChar;
 		function getData(length: CardinalPtr): BytePtr;
@@ -1612,16 +1995,18 @@ type
 		getData: IClientBlock_getDataPtr;
 		putData: IClientBlock_putDataPtr;
 		newKey: IClientBlock_newKeyPtr;
+		getAuthBlock: IClientBlock_getAuthBlockPtr;
 	end;
 
 	IClientBlock = class(IReferenceCounted)
-		const VERSION = 7;
+		const VERSION = 4;
 
 		function getLogin(): PAnsiChar;
 		function getPassword(): PAnsiChar;
 		function getData(length: CardinalPtr): BytePtr;
 		procedure putData(status: IStatus; length: Cardinal; data: Pointer);
 		function newKey(status: IStatus): ICryptKey;
+		function getAuthBlock(status: IStatus): IAuthBlock;
 	end;
 
 	IClientBlockImpl = class(IClientBlock)
@@ -1634,6 +2019,7 @@ type
 		function getData(length: CardinalPtr): BytePtr; virtual; abstract;
 		procedure putData(status: IStatus; length: Cardinal; data: Pointer); virtual; abstract;
 		function newKey(status: IStatus): ICryptKey; virtual; abstract;
+		function getAuthBlock(status: IStatus): IAuthBlock; virtual; abstract;
 	end;
 
 	ServerVTable = class(AuthVTable)
@@ -1686,7 +2072,7 @@ type
 	end;
 
 	IUserField = class(IVersioned)
-		const VERSION = 3;
+		const VERSION = 2;
 
 		function entered(): Integer;
 		function specified(): Integer;
@@ -1707,7 +2093,7 @@ type
 	end;
 
 	ICharUserField = class(IUserField)
-		const VERSION = 5;
+		const VERSION = 3;
 
 		function get(): PAnsiChar;
 		procedure set_(status: IStatus; newValue: PAnsiChar);
@@ -1729,7 +2115,7 @@ type
 	end;
 
 	IIntUserField = class(IUserField)
-		const VERSION = 5;
+		const VERSION = 3;
 
 		function get(): Integer;
 		procedure set_(status: IStatus; newValue: Integer);
@@ -1760,7 +2146,7 @@ type
 	end;
 
 	IUser = class(IVersioned)
-		const VERSION = 11;
+		const VERSION = 2;
 		const OP_USER_ADD = Cardinal(1);
 		const OP_USER_MODIFY = Cardinal(2);
 		const OP_USER_DELETE = Cardinal(3);
@@ -1802,7 +2188,7 @@ type
 	end;
 
 	IListUsers = class(IVersioned)
-		const VERSION = 1;
+		const VERSION = 2;
 
 		procedure list(status: IStatus; user: IUser);
 	end;
@@ -1819,16 +2205,20 @@ type
 		networkProtocol: ILogonInfo_networkProtocolPtr;
 		remoteAddress: ILogonInfo_remoteAddressPtr;
 		authBlock: ILogonInfo_authBlockPtr;
+		attachment: ILogonInfo_attachmentPtr;
+		transaction: ILogonInfo_transactionPtr;
 	end;
 
 	ILogonInfo = class(IVersioned)
-		const VERSION = 5;
+		const VERSION = 3;
 
 		function name(): PAnsiChar;
 		function role(): PAnsiChar;
 		function networkProtocol(): PAnsiChar;
 		function remoteAddress(): PAnsiChar;
 		function authBlock(length: CardinalPtr): BytePtr;
+		function attachment(status: IStatus): IAttachment;
+		function transaction(status: IStatus): ITransaction;
 	end;
 
 	ILogonInfoImpl = class(ILogonInfo)
@@ -1839,6 +2229,8 @@ type
 		function networkProtocol(): PAnsiChar; virtual; abstract;
 		function remoteAddress(): PAnsiChar; virtual; abstract;
 		function authBlock(length: CardinalPtr): BytePtr; virtual; abstract;
+		function attachment(status: IStatus): IAttachment; virtual; abstract;
+		function transaction(status: IStatus): ITransaction; virtual; abstract;
 	end;
 
 	ManagementVTable = class(PluginBaseVTable)
@@ -1849,7 +2241,7 @@ type
 	end;
 
 	IManagement = class(IPluginBase)
-		const VERSION = 8;
+		const VERSION = 4;
 
 		procedure start(status: IStatus; logonInfo: ILogonInfo);
 		function execute(status: IStatus; user: IUser; callback: IListUsers): Integer;
@@ -1870,20 +2262,58 @@ type
 		procedure rollback(status: IStatus); virtual; abstract;
 	end;
 
+	AuthBlockVTable = class(VersionedVTable)
+		getType: IAuthBlock_getTypePtr;
+		getName: IAuthBlock_getNamePtr;
+		getPlugin: IAuthBlock_getPluginPtr;
+		getSecurityDb: IAuthBlock_getSecurityDbPtr;
+		getOriginalPlugin: IAuthBlock_getOriginalPluginPtr;
+		next: IAuthBlock_nextPtr;
+		first: IAuthBlock_firstPtr;
+	end;
+
+	IAuthBlock = class(IVersioned)
+		const VERSION = 2;
+
+		function getType(): PAnsiChar;
+		function getName(): PAnsiChar;
+		function getPlugin(): PAnsiChar;
+		function getSecurityDb(): PAnsiChar;
+		function getOriginalPlugin(): PAnsiChar;
+		function next(status: IStatus): Boolean;
+		function first(status: IStatus): Boolean;
+	end;
+
+	IAuthBlockImpl = class(IAuthBlock)
+		constructor create;
+
+		function getType(): PAnsiChar; virtual; abstract;
+		function getName(): PAnsiChar; virtual; abstract;
+		function getPlugin(): PAnsiChar; virtual; abstract;
+		function getSecurityDb(): PAnsiChar; virtual; abstract;
+		function getOriginalPlugin(): PAnsiChar; virtual; abstract;
+		function next(status: IStatus): Boolean; virtual; abstract;
+		function first(status: IStatus): Boolean; virtual; abstract;
+	end;
+
 	WireCryptPluginVTable = class(PluginBaseVTable)
 		getKnownTypes: IWireCryptPlugin_getKnownTypesPtr;
 		setKey: IWireCryptPlugin_setKeyPtr;
 		encrypt: IWireCryptPlugin_encryptPtr;
 		decrypt: IWireCryptPlugin_decryptPtr;
+		getSpecificData: IWireCryptPlugin_getSpecificDataPtr;
+		setSpecificData: IWireCryptPlugin_setSpecificDataPtr;
 	end;
 
 	IWireCryptPlugin = class(IPluginBase)
-		const VERSION = 8;
+		const VERSION = 5;
 
 		function getKnownTypes(status: IStatus): PAnsiChar;
 		procedure setKey(status: IStatus; key: ICryptKey);
 		procedure encrypt(status: IStatus; length: Cardinal; from: Pointer; to_: Pointer);
 		procedure decrypt(status: IStatus; length: Cardinal; from: Pointer; to_: Pointer);
+		function getSpecificData(status: IStatus; keyType: PAnsiChar; length: CardinalPtr): BytePtr;
+		procedure setSpecificData(status: IStatus; keyType: PAnsiChar; length: Cardinal; data: BytePtr);
 	end;
 
 	IWireCryptPluginImpl = class(IWireCryptPlugin)
@@ -1897,6 +2327,8 @@ type
 		procedure setKey(status: IStatus; key: ICryptKey); virtual; abstract;
 		procedure encrypt(status: IStatus; length: Cardinal; from: Pointer; to_: Pointer); virtual; abstract;
 		procedure decrypt(status: IStatus; length: Cardinal; from: Pointer; to_: Pointer); virtual; abstract;
+		function getSpecificData(status: IStatus; keyType: PAnsiChar; length: CardinalPtr): BytePtr; virtual; abstract;
+		procedure setSpecificData(status: IStatus; keyType: PAnsiChar; length: Cardinal; data: BytePtr); virtual; abstract;
 	end;
 
 	CryptKeyCallbackVTable = class(VersionedVTable)
@@ -1904,7 +2336,7 @@ type
 	end;
 
 	ICryptKeyCallback = class(IVersioned)
-		const VERSION = 1;
+		const VERSION = 2;
 
 		function callback(dataLength: Cardinal; data: Pointer; bufferLength: Cardinal; buffer: Pointer): Cardinal;
 	end;
@@ -1923,7 +2355,7 @@ type
 	end;
 
 	IKeyHolderPlugin = class(IPluginBase)
-		const VERSION = 8;
+		const VERSION = 5;
 
 		function keyCallback(status: IStatus; callback: ICryptKeyCallback): Integer;
 		function keyHandle(status: IStatus; keyName: PAnsiChar): ICryptKeyCallback;
@@ -1970,7 +2402,7 @@ type
 	end;
 
 	IDbCryptPlugin = class(IPluginBase)
-		const VERSION = 8;
+		const VERSION = 5;
 
 		procedure setKey(status: IStatus; length: Cardinal; sources: IKeyHolderPluginPtr; keyName: PAnsiChar);
 		procedure encrypt(status: IStatus; length: Cardinal; from: Pointer; to_: Pointer);
@@ -2005,7 +2437,7 @@ type
 	end;
 
 	IExternalContext = class(IVersioned)
-		const VERSION = 10;
+		const VERSION = 2;
 
 		function getMaster(): IMaster;
 		function getEngine(status: IStatus): IExternalEngine;
@@ -2039,7 +2471,7 @@ type
 	end;
 
 	IExternalResultSet = class(IDisposable)
-		const VERSION = 2;
+		const VERSION = 3;
 
 		function fetch(status: IStatus): Boolean;
 	end;
@@ -2136,7 +2568,7 @@ type
 	end;
 
 	IRoutineMetadata = class(IVersioned)
-		const VERSION = 9;
+		const VERSION = 2;
 
 		function getPackage(status: IStatus): PAnsiChar;
 		function getName(status: IStatus): PAnsiChar;
@@ -2173,7 +2605,7 @@ type
 	end;
 
 	IExternalEngine = class(IPluginBase)
-		const VERSION = 10;
+		const VERSION = 4;
 
 		procedure open(status: IStatus; context: IExternalContext; charSet: PAnsiChar; charSetSize: Cardinal);
 		procedure openAttachment(status: IStatus; context: IExternalContext);
@@ -2240,7 +2672,7 @@ type
 	end;
 
 	IVersionCallback = class(IVersioned)
-		const VERSION = 1;
+		const VERSION = 2;
 
 		procedure callback(status: IStatus; text: PAnsiChar);
 	end;
@@ -2265,10 +2697,19 @@ type
 		getClientVersion: IUtil_getClientVersionPtr;
 		getXpbBuilder: IUtil_getXpbBuilderPtr;
 		setOffsets: IUtil_setOffsetsPtr;
+		getDecFloat16: IUtil_getDecFloat16Ptr;
+		getDecFloat34: IUtil_getDecFloat34Ptr;
+		decodeTimeTz: IUtil_decodeTimeTzPtr;
+		decodeTimeStampTz: IUtil_decodeTimeStampTzPtr;
+		encodeTimeTz: IUtil_encodeTimeTzPtr;
+		encodeTimeStampTz: IUtil_encodeTimeStampTzPtr;
+		getInt128: IUtil_getInt128Ptr;
+		decodeTimeTzEx: IUtil_decodeTimeTzExPtr;
+		decodeTimeStampTzEx: IUtil_decodeTimeStampTzExPtr;
 	end;
 
 	IUtil = class(IVersioned)
-		const VERSION = 13;
+		const VERSION = 4;
 
 		procedure getFbVersion(status: IStatus; att: IAttachment; callback: IVersionCallback);
 		procedure loadBlob(status: IStatus; blobId: ISC_QUADPtr; att: IAttachment; tra: ITransaction; file_: PAnsiChar; txt: Boolean);
@@ -2283,6 +2724,15 @@ type
 		function getClientVersion(): Cardinal;
 		function getXpbBuilder(status: IStatus; kind: Cardinal; buf: BytePtr; len: Cardinal): IXpbBuilder;
 		function setOffsets(status: IStatus; metadata: IMessageMetadata; callback: IOffsetsCallback): Cardinal;
+		function getDecFloat16(status: IStatus): IDecFloat16;
+		function getDecFloat34(status: IStatus): IDecFloat34;
+		procedure decodeTimeTz(status: IStatus; timeTz: ISC_TIME_TZPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+		procedure decodeTimeStampTz(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+		procedure encodeTimeTz(status: IStatus; timeTz: ISC_TIME_TZPtr; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar);
+		procedure encodeTimeStampTz(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: Cardinal; month: Cardinal; day: Cardinal; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar);
+		function getInt128(status: IStatus): IInt128;
+		procedure decodeTimeTzEx(status: IStatus; timeTz: ISC_TIME_TZ_EXPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+		procedure decodeTimeStampTzEx(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZ_EXPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
 	end;
 
 	IUtilImpl = class(IUtil)
@@ -2301,6 +2751,15 @@ type
 		function getClientVersion(): Cardinal; virtual; abstract;
 		function getXpbBuilder(status: IStatus; kind: Cardinal; buf: BytePtr; len: Cardinal): IXpbBuilder; virtual; abstract;
 		function setOffsets(status: IStatus; metadata: IMessageMetadata; callback: IOffsetsCallback): Cardinal; virtual; abstract;
+		function getDecFloat16(status: IStatus): IDecFloat16; virtual; abstract;
+		function getDecFloat34(status: IStatus): IDecFloat34; virtual; abstract;
+		procedure decodeTimeTz(status: IStatus; timeTz: ISC_TIME_TZPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); virtual; abstract;
+		procedure decodeTimeStampTz(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); virtual; abstract;
+		procedure encodeTimeTz(status: IStatus; timeTz: ISC_TIME_TZPtr; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar); virtual; abstract;
+		procedure encodeTimeStampTz(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: Cardinal; month: Cardinal; day: Cardinal; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar); virtual; abstract;
+		function getInt128(status: IStatus): IInt128; virtual; abstract;
+		procedure decodeTimeTzEx(status: IStatus; timeTz: ISC_TIME_TZ_EXPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); virtual; abstract;
+		procedure decodeTimeStampTzEx(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZ_EXPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); virtual; abstract;
 	end;
 
 	OffsetsCallbackVTable = class(VersionedVTable)
@@ -2308,7 +2767,7 @@ type
 	end;
 
 	IOffsetsCallback = class(IVersioned)
-		const VERSION = 1;
+		const VERSION = 2;
 
 		procedure setOffset(status: IStatus; index: Cardinal; offset: Cardinal; nullOffset: Cardinal);
 	end;
@@ -2343,11 +2802,18 @@ type
 	end;
 
 	IXpbBuilder = class(IDisposable)
-		const VERSION = 21;
+		const VERSION = 3;
 		const DPB = Cardinal(1);
 		const SPB_ATTACH = Cardinal(2);
 		const SPB_START = Cardinal(3);
 		const TPB = Cardinal(4);
+		const BATCH = Cardinal(5);
+		const BPB = Cardinal(6);
+		const SPB_SEND = Cardinal(7);
+		const SPB_RECEIVE = Cardinal(8);
+		const SPB_RESPONSE = Cardinal(9);
+		const INFO_SEND = Cardinal(10);
+		const INFO_RESPONSE = Cardinal(11);
 
 		procedure clear(status: IStatus);
 		procedure removeCurrent(status: IStatus);
@@ -2410,7 +2876,7 @@ type
 	end;
 
 	ITraceConnection = class(IVersioned)
-		const VERSION = 9;
+		const VERSION = 2;
 		const KIND_DATABASE = Cardinal(1);
 		const KIND_SERVICE = Cardinal(2);
 
@@ -2445,7 +2911,7 @@ type
 	end;
 
 	ITraceDatabaseConnection = class(ITraceConnection)
-		const VERSION = 11;
+		const VERSION = 3;
 
 		function getConnectionID(): Int64;
 		function getDatabaseName(): PAnsiChar;
@@ -2473,20 +2939,25 @@ type
 		getWait: ITraceTransaction_getWaitPtr;
 		getIsolation: ITraceTransaction_getIsolationPtr;
 		getPerf: ITraceTransaction_getPerfPtr;
+		getInitialID: ITraceTransaction_getInitialIDPtr;
+		getPreviousID: ITraceTransaction_getPreviousIDPtr;
 	end;
 
 	ITraceTransaction = class(IVersioned)
-		const VERSION = 5;
+		const VERSION = 3;
 		const ISOLATION_CONSISTENCY = Cardinal(1);
 		const ISOLATION_CONCURRENCY = Cardinal(2);
 		const ISOLATION_READ_COMMITTED_RECVER = Cardinal(3);
 		const ISOLATION_READ_COMMITTED_NORECVER = Cardinal(4);
+		const ISOLATION_READ_COMMITTED_READ_CONSISTENCY = Cardinal(5);
 
 		function getTransactionID(): Int64;
 		function getReadOnly(): Boolean;
 		function getWait(): Integer;
 		function getIsolation(): Cardinal;
 		function getPerf(): PerformanceInfoPtr;
+		function getInitialID(): Int64;
+		function getPreviousID(): Int64;
 	end;
 
 	ITraceTransactionImpl = class(ITraceTransaction)
@@ -2497,6 +2968,8 @@ type
 		function getWait(): Integer; virtual; abstract;
 		function getIsolation(): Cardinal; virtual; abstract;
 		function getPerf(): PerformanceInfoPtr; virtual; abstract;
+		function getInitialID(): Int64; virtual; abstract;
+		function getPreviousID(): Int64; virtual; abstract;
 	end;
 
 	TraceParamsVTable = class(VersionedVTable)
@@ -2549,7 +3022,7 @@ type
 	end;
 
 	ITraceSQLStatement = class(ITraceStatement)
-		const VERSION = 7;
+		const VERSION = 3;
 
 		function getText(): PAnsiChar;
 		function getPlan(): PAnsiChar;
@@ -2577,7 +3050,7 @@ type
 	end;
 
 	ITraceBLRStatement = class(ITraceStatement)
-		const VERSION = 5;
+		const VERSION = 3;
 
 		function getData(): BytePtr;
 		function getDataLength(): Cardinal;
@@ -2601,7 +3074,7 @@ type
 	end;
 
 	ITraceDYNRequest = class(IVersioned)
-		const VERSION = 3;
+		const VERSION = 2;
 
 		function getData(): BytePtr;
 		function getDataLength(): Cardinal;
@@ -2623,7 +3096,7 @@ type
 	end;
 
 	ITraceContextVariable = class(IVersioned)
-		const VERSION = 3;
+		const VERSION = 2;
 
 		function getNameSpace(): PAnsiChar;
 		function getVarName(): PAnsiChar;
@@ -2645,7 +3118,7 @@ type
 	end;
 
 	ITraceProcedure = class(IVersioned)
-		const VERSION = 3;
+		const VERSION = 2;
 
 		function getProcName(): PAnsiChar;
 		function getInputs(): ITraceParams;
@@ -2668,7 +3141,7 @@ type
 	end;
 
 	ITraceFunction = class(IVersioned)
-		const VERSION = 4;
+		const VERSION = 2;
 
 		function getFuncName(): PAnsiChar;
 		function getInputs(): ITraceParams;
@@ -2694,7 +3167,7 @@ type
 	end;
 
 	ITraceTrigger = class(IVersioned)
-		const VERSION = 5;
+		const VERSION = 2;
 		const TYPE_ALL = Cardinal(0);
 		const TYPE_BEFORE = Cardinal(1);
 		const TYPE_AFTER = Cardinal(2);
@@ -2723,7 +3196,7 @@ type
 	end;
 
 	ITraceServiceConnection = class(ITraceConnection)
-		const VERSION = 12;
+		const VERSION = 3;
 
 		function getServiceID(): Pointer;
 		function getServiceMgr(): PAnsiChar;
@@ -2755,7 +3228,7 @@ type
 	end;
 
 	ITraceStatusVector = class(IVersioned)
-		const VERSION = 4;
+		const VERSION = 2;
 
 		function hasError(): Boolean;
 		function hasWarning(): Boolean;
@@ -2781,7 +3254,7 @@ type
 	end;
 
 	ITraceSweepInfo = class(IVersioned)
-		const VERSION = 5;
+		const VERSION = 2;
 
 		function getOIT(): Int64;
 		function getOST(): Int64;
@@ -2802,12 +3275,14 @@ type
 
 	TraceLogWriterVTable = class(ReferenceCountedVTable)
 		write: ITraceLogWriter_writePtr;
+		write_s: ITraceLogWriter_write_sPtr;
 	end;
 
 	ITraceLogWriter = class(IReferenceCounted)
-		const VERSION = 3;
+		const VERSION = 4;
 
 		function write(buf: Pointer; size: Cardinal): Cardinal;
+		function write_s(status: IStatus; buf: Pointer; size: Cardinal): Cardinal;
 	end;
 
 	ITraceLogWriterImpl = class(ITraceLogWriter)
@@ -2816,6 +3291,7 @@ type
 		procedure addRef(); virtual; abstract;
 		function release(): Integer; virtual; abstract;
 		function write(buf: Pointer; size: Cardinal): Cardinal; virtual; abstract;
+		function write_s(status: IStatus; buf: Pointer; size: Cardinal): Cardinal; virtual; abstract;
 	end;
 
 	TraceInitInfoVTable = class(VersionedVTable)
@@ -2829,7 +3305,7 @@ type
 	end;
 
 	ITraceInitInfo = class(IVersioned)
-		const VERSION = 7;
+		const VERSION = 2;
 
 		function getConfigText(): PAnsiChar;
 		function getTraceSessionID(): Integer;
@@ -2874,10 +3350,11 @@ type
 		trace_event_error: ITracePlugin_trace_event_errorPtr;
 		trace_event_sweep: ITracePlugin_trace_event_sweepPtr;
 		trace_func_execute: ITracePlugin_trace_func_executePtr;
+		trace_dsql_restart: ITracePlugin_trace_dsql_restartPtr;
 	end;
 
 	ITracePlugin = class(IReferenceCounted)
-		const VERSION = 23;
+		const VERSION = 4;
 		const RESULT_SUCCESS = Cardinal(0);
 		const RESULT_FAILED = Cardinal(1);
 		const RESULT_UNAUTHORIZED = Cardinal(2);
@@ -2907,6 +3384,7 @@ type
 		function trace_event_error(connection: ITraceConnection; status: ITraceStatusVector; function_: PAnsiChar): Boolean;
 		function trace_event_sweep(connection: ITraceDatabaseConnection; sweep: ITraceSweepInfo; sweep_state: Cardinal): Boolean;
 		function trace_func_execute(connection: ITraceDatabaseConnection; transaction: ITraceTransaction; function_: ITraceFunction; started: Boolean; func_result: Cardinal): Boolean;
+		function trace_dsql_restart(connection: ITraceDatabaseConnection; transaction: ITraceTransaction; statement: ITraceSQLStatement; number: Cardinal): Boolean;
 	end;
 
 	ITracePluginImpl = class(ITracePlugin)
@@ -2935,6 +3413,7 @@ type
 		function trace_event_error(connection: ITraceConnection; status: ITraceStatusVector; function_: PAnsiChar): Boolean; virtual; abstract;
 		function trace_event_sweep(connection: ITraceDatabaseConnection; sweep: ITraceSweepInfo; sweep_state: Cardinal): Boolean; virtual; abstract;
 		function trace_func_execute(connection: ITraceDatabaseConnection; transaction: ITraceTransaction; function_: ITraceFunction; started: Boolean; func_result: Cardinal): Boolean; virtual; abstract;
+		function trace_dsql_restart(connection: ITraceDatabaseConnection; transaction: ITraceTransaction; statement: ITraceSQLStatement; number: Cardinal): Boolean; virtual; abstract;
 	end;
 
 	TraceFactoryVTable = class(PluginBaseVTable)
@@ -2943,7 +3422,7 @@ type
 	end;
 
 	ITraceFactory = class(IPluginBase)
-		const VERSION = 6;
+		const VERSION = 4;
 		const TRACE_EVENT_ATTACH = Cardinal(0);
 		const TRACE_EVENT_DETACH = Cardinal(1);
 		const TRACE_EVENT_TRANSACTION_START = Cardinal(2);
@@ -3049,7 +3528,7 @@ type
 	end;
 
 	IUdrPlugin = class(IVersioned)
-		const VERSION = 4;
+		const VERSION = 2;
 
 		function getMaster(): IMaster;
 		procedure registerFunction(status: IStatus; name: PAnsiChar; factory: IUdrFunctionFactory);
@@ -3066,9 +3545,221 @@ type
 		procedure registerTrigger(status: IStatus; name: PAnsiChar; factory: IUdrTriggerFactory); virtual; abstract;
 	end;
 
+	DecFloat16VTable = class(VersionedVTable)
+		toBcd: IDecFloat16_toBcdPtr;
+		toString: IDecFloat16_toStringPtr;
+		fromBcd: IDecFloat16_fromBcdPtr;
+		fromString: IDecFloat16_fromStringPtr;
+	end;
+
+	IDecFloat16 = class(IVersioned)
+		const VERSION = 2;
+		const BCD_SIZE = Cardinal(16);
+		const STRING_SIZE = Cardinal(24);
+
+		procedure toBcd(from: FB_DEC16Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr);
+		procedure toString(status: IStatus; from: FB_DEC16Ptr; bufferLength: Cardinal; buffer: PAnsiChar);
+		procedure fromBcd(sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC16Ptr);
+		procedure fromString(status: IStatus; from: PAnsiChar; to_: FB_DEC16Ptr);
+	end;
+
+	IDecFloat16Impl = class(IDecFloat16)
+		constructor create;
+
+		procedure toBcd(from: FB_DEC16Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr); virtual; abstract;
+		procedure toString(status: IStatus; from: FB_DEC16Ptr; bufferLength: Cardinal; buffer: PAnsiChar); virtual; abstract;
+		procedure fromBcd(sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC16Ptr); virtual; abstract;
+		procedure fromString(status: IStatus; from: PAnsiChar; to_: FB_DEC16Ptr); virtual; abstract;
+	end;
+
+	DecFloat34VTable = class(VersionedVTable)
+		toBcd: IDecFloat34_toBcdPtr;
+		toString: IDecFloat34_toStringPtr;
+		fromBcd: IDecFloat34_fromBcdPtr;
+		fromString: IDecFloat34_fromStringPtr;
+	end;
+
+	IDecFloat34 = class(IVersioned)
+		const VERSION = 2;
+		const BCD_SIZE = Cardinal(34);
+		const STRING_SIZE = Cardinal(43);
+
+		procedure toBcd(from: FB_DEC34Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr);
+		procedure toString(status: IStatus; from: FB_DEC34Ptr; bufferLength: Cardinal; buffer: PAnsiChar);
+		procedure fromBcd(sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC34Ptr);
+		procedure fromString(status: IStatus; from: PAnsiChar; to_: FB_DEC34Ptr);
+	end;
+
+	IDecFloat34Impl = class(IDecFloat34)
+		constructor create;
+
+		procedure toBcd(from: FB_DEC34Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr); virtual; abstract;
+		procedure toString(status: IStatus; from: FB_DEC34Ptr; bufferLength: Cardinal; buffer: PAnsiChar); virtual; abstract;
+		procedure fromBcd(sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC34Ptr); virtual; abstract;
+		procedure fromString(status: IStatus; from: PAnsiChar; to_: FB_DEC34Ptr); virtual; abstract;
+	end;
+
+	Int128VTable = class(VersionedVTable)
+		toString: IInt128_toStringPtr;
+		fromString: IInt128_fromStringPtr;
+	end;
+
+	IInt128 = class(IVersioned)
+		const VERSION = 2;
+		const STRING_SIZE = Cardinal(46);
+
+		procedure toString(status: IStatus; from: FB_I128Ptr; scale: Integer; bufferLength: Cardinal; buffer: PAnsiChar);
+		procedure fromString(status: IStatus; scale: Integer; from: PAnsiChar; to_: FB_I128Ptr);
+	end;
+
+	IInt128Impl = class(IInt128)
+		constructor create;
+
+		procedure toString(status: IStatus; from: FB_I128Ptr; scale: Integer; bufferLength: Cardinal; buffer: PAnsiChar); virtual; abstract;
+		procedure fromString(status: IStatus; scale: Integer; from: PAnsiChar; to_: FB_I128Ptr); virtual; abstract;
+	end;
+
+	ReplicatedFieldVTable = class(VersionedVTable)
+		getName: IReplicatedField_getNamePtr;
+		getType: IReplicatedField_getTypePtr;
+		getSubType: IReplicatedField_getSubTypePtr;
+		getScale: IReplicatedField_getScalePtr;
+		getLength: IReplicatedField_getLengthPtr;
+		getCharSet: IReplicatedField_getCharSetPtr;
+		getData: IReplicatedField_getDataPtr;
+	end;
+
+	IReplicatedField = class(IVersioned)
+		const VERSION = 2;
+
+		function getName(): PAnsiChar;
+		function getType(): Cardinal;
+		function getSubType(): Integer;
+		function getScale(): Integer;
+		function getLength(): Cardinal;
+		function getCharSet(): Cardinal;
+		function getData(): Pointer;
+	end;
+
+	IReplicatedFieldImpl = class(IReplicatedField)
+		constructor create;
+
+		function getName(): PAnsiChar; virtual; abstract;
+		function getType(): Cardinal; virtual; abstract;
+		function getSubType(): Integer; virtual; abstract;
+		function getScale(): Integer; virtual; abstract;
+		function getLength(): Cardinal; virtual; abstract;
+		function getCharSet(): Cardinal; virtual; abstract;
+		function getData(): Pointer; virtual; abstract;
+	end;
+
+	ReplicatedRecordVTable = class(VersionedVTable)
+		getCount: IReplicatedRecord_getCountPtr;
+		getField: IReplicatedRecord_getFieldPtr;
+		getRawLength: IReplicatedRecord_getRawLengthPtr;
+		getRawData: IReplicatedRecord_getRawDataPtr;
+	end;
+
+	IReplicatedRecord = class(IVersioned)
+		const VERSION = 2;
+
+		function getCount(): Cardinal;
+		function getField(index: Cardinal): IReplicatedField;
+		function getRawLength(): Cardinal;
+		function getRawData(): BytePtr;
+	end;
+
+	IReplicatedRecordImpl = class(IReplicatedRecord)
+		constructor create;
+
+		function getCount(): Cardinal; virtual; abstract;
+		function getField(index: Cardinal): IReplicatedField; virtual; abstract;
+		function getRawLength(): Cardinal; virtual; abstract;
+		function getRawData(): BytePtr; virtual; abstract;
+	end;
+
+	ReplicatedTransactionVTable = class(DisposableVTable)
+		prepare: IReplicatedTransaction_preparePtr;
+		commit: IReplicatedTransaction_commitPtr;
+		rollback: IReplicatedTransaction_rollbackPtr;
+		startSavepoint: IReplicatedTransaction_startSavepointPtr;
+		releaseSavepoint: IReplicatedTransaction_releaseSavepointPtr;
+		rollbackSavepoint: IReplicatedTransaction_rollbackSavepointPtr;
+		insertRecord: IReplicatedTransaction_insertRecordPtr;
+		updateRecord: IReplicatedTransaction_updateRecordPtr;
+		deleteRecord: IReplicatedTransaction_deleteRecordPtr;
+		executeSql: IReplicatedTransaction_executeSqlPtr;
+		executeSqlIntl: IReplicatedTransaction_executeSqlIntlPtr;
+	end;
+
+	IReplicatedTransaction = class(IDisposable)
+		const VERSION = 3;
+
+		procedure prepare(status: IStatus);
+		procedure commit(status: IStatus);
+		procedure rollback(status: IStatus);
+		procedure startSavepoint(status: IStatus);
+		procedure releaseSavepoint(status: IStatus);
+		procedure rollbackSavepoint(status: IStatus);
+		procedure insertRecord(status: IStatus; name: PAnsiChar; record_: IReplicatedRecord);
+		procedure updateRecord(status: IStatus; name: PAnsiChar; orgRecord: IReplicatedRecord; newRecord: IReplicatedRecord);
+		procedure deleteRecord(status: IStatus; name: PAnsiChar; record_: IReplicatedRecord);
+		procedure executeSql(status: IStatus; sql: PAnsiChar);
+		procedure executeSqlIntl(status: IStatus; charset: Cardinal; sql: PAnsiChar);
+	end;
+
+	IReplicatedTransactionImpl = class(IReplicatedTransaction)
+		constructor create;
+
+		procedure dispose(); virtual; abstract;
+		procedure prepare(status: IStatus); virtual; abstract;
+		procedure commit(status: IStatus); virtual; abstract;
+		procedure rollback(status: IStatus); virtual; abstract;
+		procedure startSavepoint(status: IStatus); virtual; abstract;
+		procedure releaseSavepoint(status: IStatus); virtual; abstract;
+		procedure rollbackSavepoint(status: IStatus); virtual; abstract;
+		procedure insertRecord(status: IStatus; name: PAnsiChar; record_: IReplicatedRecord); virtual; abstract;
+		procedure updateRecord(status: IStatus; name: PAnsiChar; orgRecord: IReplicatedRecord; newRecord: IReplicatedRecord); virtual; abstract;
+		procedure deleteRecord(status: IStatus; name: PAnsiChar; record_: IReplicatedRecord); virtual; abstract;
+		procedure executeSql(status: IStatus; sql: PAnsiChar); virtual; abstract;
+		procedure executeSqlIntl(status: IStatus; charset: Cardinal; sql: PAnsiChar); virtual; abstract;
+	end;
+
+	ReplicatedSessionVTable = class(PluginBaseVTable)
+		init: IReplicatedSession_initPtr;
+		startTransaction: IReplicatedSession_startTransactionPtr;
+		cleanupTransaction: IReplicatedSession_cleanupTransactionPtr;
+		setSequence: IReplicatedSession_setSequencePtr;
+	end;
+
+	IReplicatedSession = class(IPluginBase)
+		const VERSION = 4;
+
+		function init(status: IStatus; attachment: IAttachment): Boolean;
+		function startTransaction(status: IStatus; transaction: ITransaction; number: Int64): IReplicatedTransaction;
+		procedure cleanupTransaction(status: IStatus; number: Int64);
+		procedure setSequence(status: IStatus; name: PAnsiChar; value: Int64);
+	end;
+
+	IReplicatedSessionImpl = class(IReplicatedSession)
+		constructor create;
+
+		procedure addRef(); virtual; abstract;
+		function release(): Integer; virtual; abstract;
+		procedure setOwner(r: IReferenceCounted); virtual; abstract;
+		function getOwner(): IReferenceCounted; virtual; abstract;
+		function init(status: IStatus; attachment: IAttachment): Boolean; virtual; abstract;
+		function startTransaction(status: IStatus; transaction: ITransaction; number: Int64): IReplicatedTransaction; virtual; abstract;
+		procedure cleanupTransaction(status: IStatus; number: Int64); virtual; abstract;
+		procedure setSequence(status: IStatus; name: PAnsiChar; value: Int64); virtual; abstract;
+	end;
+
+{$IFNDEF NO_FBCLIENT}
 	function fb_get_master_interface : IMaster; cdecl; external 'fbclient';
+{$ENDIF}
 
 const
+	FB_UsedInYValve = FALSE;
 	isc_dpb_version1 = byte(1);
 	isc_dpb_version2 = byte(2);
 	isc_dpb_cdd_pathname = byte(1);
@@ -3161,10 +3852,17 @@ const
 	isc_dpb_nolinger = byte(88);
 	isc_dpb_reset_icu = byte(89);
 	isc_dpb_map_attach = byte(90);
+	isc_dpb_session_time_zone = byte(91);
+	isc_dpb_set_db_replica = byte(92);
+	isc_dpb_set_bind = byte(93);
+	isc_dpb_decfloat_round = byte(94);
+	isc_dpb_decfloat_traps = byte(95);
+	isc_dpb_clear_map = byte(96);
 	isc_dpb_address = byte(1);
 	isc_dpb_addr_protocol = byte(1);
 	isc_dpb_addr_endpoint = byte(2);
 	isc_dpb_addr_flags = byte(3);
+	isc_dpb_addr_crypt = byte(4);
 	isc_dpb_addr_flag_conn_compressed = $01;
 	isc_dpb_addr_flag_conn_encrypted = $02;
 	isc_dpb_pages = byte(1);
@@ -3184,6 +3882,9 @@ const
 	isc_dpb_shut_multi = $20;
 	isc_dpb_shut_single = $30;
 	isc_dpb_shut_full = $40;
+	isc_dpb_replica_none = byte(0);
+	isc_dpb_replica_read_only = byte(1);
+	isc_dpb_replica_read_write = byte(2);
 	RDB_system = byte(1);
 	RDB_id_assigned = byte(2);
 	isc_tpb_version1 = byte(1);
@@ -3209,6 +3910,8 @@ const
 	isc_tpb_restart_requests = byte(19);
 	isc_tpb_no_auto_undo = byte(20);
 	isc_tpb_lock_timeout = byte(21);
+	isc_tpb_read_consistency = byte(22);
+	isc_tpb_at_snapshot_number = byte(23);
 	isc_bpb_version1 = byte(1);
 	isc_bpb_source_type = byte(1);
 	isc_bpb_target_type = byte(2);
@@ -3268,7 +3971,8 @@ const
 	isc_action_svc_drop_mapping = byte(28);
 	isc_action_svc_display_user_adm = byte(29);
 	isc_action_svc_validate = byte(30);
-	isc_action_svc_last = byte(31);
+	isc_action_svc_nfix = byte(31);
+	isc_action_svc_last = byte(32);
 	isc_info_svc_svr_db_info = byte(50);
 	isc_info_svc_get_license = byte(51);
 	isc_info_svc_get_license_mask = byte(52);
@@ -3307,6 +4011,10 @@ const
 	isc_spb_bkp_length = byte(7);
 	isc_spb_bkp_skip_data = byte(8);
 	isc_spb_bkp_stat = byte(15);
+	isc_spb_bkp_keyholder = byte(16);
+	isc_spb_bkp_keyname = byte(17);
+	isc_spb_bkp_crypt = byte(18);
+	isc_spb_bkp_include_data = byte(19);
 	isc_spb_bkp_ignore_checksums = $01;
 	isc_spb_bkp_ignore_limbo = $02;
 	isc_spb_bkp_metadata_only = $04;
@@ -3316,6 +4024,7 @@ const
 	isc_spb_bkp_convert = $40;
 	isc_spb_bkp_expand = $80;
 	isc_spb_bkp_no_triggers = $8000;
+	isc_spb_bkp_zip = $010000;
 	isc_spb_prp_page_buffers = byte(5);
 	isc_spb_prp_sweep_interval = byte(6);
 	isc_spb_prp_shutdown_db = byte(7);
@@ -3333,6 +4042,7 @@ const
 	isc_spb_prp_transactions_shutdown = byte(43);
 	isc_spb_prp_shutdown_mode = byte(44);
 	isc_spb_prp_online_mode = byte(45);
+	isc_spb_prp_replica_mode = byte(46);
 	isc_spb_prp_sm_normal = byte(0);
 	isc_spb_prp_sm_multi = byte(1);
 	isc_spb_prp_sm_single = byte(2);
@@ -3343,6 +4053,9 @@ const
 	isc_spb_prp_wm_sync = byte(38);
 	isc_spb_prp_am_readonly = byte(39);
 	isc_spb_prp_am_readwrite = byte(40);
+	isc_spb_prp_rm_none = byte(0);
+	isc_spb_prp_rm_readonly = byte(1);
+	isc_spb_prp_rm_readwrite = byte(2);
 	isc_spb_rpr_commit_trans = byte(15);
 	isc_spb_rpr_rollback_trans = byte(34);
 	isc_spb_rpr_recover_two_phase = byte(17);
@@ -3389,6 +4102,7 @@ const
 	isc_spb_res_replace = $1000;
 	isc_spb_res_create = $2000;
 	isc_spb_res_use_all_space = $4000;
+	isc_spb_res_replica_mode = byte(20);
 	isc_spb_val_tab_incl = byte(1);
 	isc_spb_val_tab_excl = byte(2);
 	isc_spb_val_idx_incl = byte(3);
@@ -3408,7 +4122,10 @@ const
 	isc_spb_nbk_level = byte(5);
 	isc_spb_nbk_file = byte(6);
 	isc_spb_nbk_direct = byte(7);
+	isc_spb_nbk_guid = byte(8);
 	isc_spb_nbk_no_triggers = $01;
+	isc_spb_nbk_inplace = $02;
+	isc_spb_nbk_sequence = $04;
 	isc_spb_trc_id = byte(1);
 	isc_spb_trc_name = byte(2);
 	isc_spb_trc_cfg = byte(3);
@@ -3446,11 +4163,20 @@ const
 	isc_blob_extfile = byte(8);
 	isc_blob_debug_info = byte(9);
 	isc_blob_max_predefined_subtype = byte(10);
+	fb_text_subtype_text = byte(0);
+	fb_text_subtype_binary = byte(1);
 	fb_shut_confirmation = byte(1);
 	fb_shut_preproviders = byte(2);
 	fb_shut_postproviders = byte(4);
 	fb_shut_finish = byte(8);
 	fb_shut_exit = byte(16);
+	fb_shutrsn_svc_stopped = -1;
+	fb_shutrsn_no_connection = -2;
+	fb_shutrsn_app_stopped = -3;
+	fb_shutrsn_signal = -5;
+	fb_shutrsn_services = -6;
+	fb_shutrsn_exit_called = -7;
+	fb_shutrsn_emergency = -8;
 	fb_cancel_disable = byte(1);
 	fb_cancel_enable = byte(2);
 	fb_cancel_raise = byte(3);
@@ -4267,6 +4993,173 @@ const
 	isc_already_opened                   = 335545107;
 	isc_bad_crypt_key                    = 335545108;
 	isc_encrypt_error                    = 335545109;
+	isc_max_idx_depth                    = 335545110;
+	isc_wrong_prvlg                      = 335545111;
+	isc_miss_prvlg                       = 335545112;
+	isc_crypt_checksum                   = 335545113;
+	isc_not_dba                          = 335545114;
+	isc_no_cursor                        = 335545115;
+	isc_dsql_window_incompat_frames      = 335545116;
+	isc_dsql_window_range_multi_key      = 335545117;
+	isc_dsql_window_range_inv_key_type   = 335545118;
+	isc_dsql_window_frame_value_inv_type = 335545119;
+	isc_window_frame_value_invalid       = 335545120;
+	isc_dsql_window_not_found            = 335545121;
+	isc_dsql_window_cant_overr_part      = 335545122;
+	isc_dsql_window_cant_overr_order     = 335545123;
+	isc_dsql_window_cant_overr_frame     = 335545124;
+	isc_dsql_window_duplicate            = 335545125;
+	isc_sql_too_long                     = 335545126;
+	isc_cfg_stmt_timeout                 = 335545127;
+	isc_att_stmt_timeout                 = 335545128;
+	isc_req_stmt_timeout                 = 335545129;
+	isc_att_shut_killed                  = 335545130;
+	isc_att_shut_idle                    = 335545131;
+	isc_att_shut_db_down                 = 335545132;
+	isc_att_shut_engine                  = 335545133;
+	isc_overriding_without_identity      = 335545134;
+	isc_overriding_system_invalid        = 335545135;
+	isc_overriding_user_invalid          = 335545136;
+	isc_overriding_system_missing        = 335545137;
+	isc_decprecision_err                 = 335545138;
+	isc_decfloat_divide_by_zero          = 335545139;
+	isc_decfloat_inexact_result          = 335545140;
+	isc_decfloat_invalid_operation       = 335545141;
+	isc_decfloat_overflow                = 335545142;
+	isc_decfloat_underflow               = 335545143;
+	isc_subfunc_notdef                   = 335545144;
+	isc_subproc_notdef                   = 335545145;
+	isc_subfunc_signat                   = 335545146;
+	isc_subproc_signat                   = 335545147;
+	isc_subfunc_defvaldecl               = 335545148;
+	isc_subproc_defvaldecl               = 335545149;
+	isc_subfunc_not_impl                 = 335545150;
+	isc_subproc_not_impl                 = 335545151;
+	isc_sysf_invalid_hash_algorithm      = 335545152;
+	isc_expression_eval_index            = 335545153;
+	isc_invalid_decfloat_trap            = 335545154;
+	isc_invalid_decfloat_round           = 335545155;
+	isc_sysf_invalid_first_last_part     = 335545156;
+	isc_sysf_invalid_date_timestamp      = 335545157;
+	isc_precision_err2                   = 335545158;
+	isc_bad_batch_handle                 = 335545159;
+	isc_intl_char                        = 335545160;
+	isc_null_block                       = 335545161;
+	isc_mixed_info                       = 335545162;
+	isc_unknown_info                     = 335545163;
+	isc_bpb_version                      = 335545164;
+	isc_user_manager                     = 335545165;
+	isc_icu_entrypoint                   = 335545166;
+	isc_icu_library                      = 335545167;
+	isc_metadata_name                    = 335545168;
+	isc_tokens_parse                     = 335545169;
+	isc_iconv_open                       = 335545170;
+	isc_batch_compl_range                = 335545171;
+	isc_batch_compl_detail               = 335545172;
+	isc_deflate_init                     = 335545173;
+	isc_inflate_init                     = 335545174;
+	isc_big_segment                      = 335545175;
+	isc_batch_policy                     = 335545176;
+	isc_batch_defbpb                     = 335545177;
+	isc_batch_align                      = 335545178;
+	isc_multi_segment_dup                = 335545179;
+	isc_non_plugin_protocol              = 335545180;
+	isc_message_format                   = 335545181;
+	isc_batch_param_version              = 335545182;
+	isc_batch_msg_long                   = 335545183;
+	isc_batch_open                       = 335545184;
+	isc_batch_type                       = 335545185;
+	isc_batch_param                      = 335545186;
+	isc_batch_blobs                      = 335545187;
+	isc_batch_blob_append                = 335545188;
+	isc_batch_stream_align               = 335545189;
+	isc_batch_rpt_blob                   = 335545190;
+	isc_batch_blob_buf                   = 335545191;
+	isc_batch_small_data                 = 335545192;
+	isc_batch_cont_bpb                   = 335545193;
+	isc_batch_big_bpb                    = 335545194;
+	isc_batch_big_segment                = 335545195;
+	isc_batch_big_seg2                   = 335545196;
+	isc_batch_blob_id                    = 335545197;
+	isc_batch_too_big                    = 335545198;
+	isc_num_literal                      = 335545199;
+	isc_map_event                        = 335545200;
+	isc_map_overflow                     = 335545201;
+	isc_hdr_overflow                     = 335545202;
+	isc_vld_plugins                      = 335545203;
+	isc_db_crypt_key                     = 335545204;
+	isc_no_keyholder_plugin              = 335545205;
+	isc_ses_reset_err                    = 335545206;
+	isc_ses_reset_open_trans             = 335545207;
+	isc_ses_reset_warn                   = 335545208;
+	isc_ses_reset_tran_rollback          = 335545209;
+	isc_plugin_name                      = 335545210;
+	isc_parameter_name                   = 335545211;
+	isc_file_starting_page_err           = 335545212;
+	isc_invalid_timezone_offset          = 335545213;
+	isc_invalid_timezone_region          = 335545214;
+	isc_invalid_timezone_id              = 335545215;
+	isc_tom_decode64len                  = 335545216;
+	isc_tom_strblob                      = 335545217;
+	isc_tom_reg                          = 335545218;
+	isc_tom_algorithm                    = 335545219;
+	isc_tom_mode_miss                    = 335545220;
+	isc_tom_mode_bad                     = 335545221;
+	isc_tom_no_mode                      = 335545222;
+	isc_tom_iv_miss                      = 335545223;
+	isc_tom_no_iv                        = 335545224;
+	isc_tom_ctrtype_bad                  = 335545225;
+	isc_tom_no_ctrtype                   = 335545226;
+	isc_tom_ctr_big                      = 335545227;
+	isc_tom_no_ctr                       = 335545228;
+	isc_tom_iv_length                    = 335545229;
+	isc_tom_error                        = 335545230;
+	isc_tom_yarrow_start                 = 335545231;
+	isc_tom_yarrow_setup                 = 335545232;
+	isc_tom_init_mode                    = 335545233;
+	isc_tom_crypt_mode                   = 335545234;
+	isc_tom_decrypt_mode                 = 335545235;
+	isc_tom_init_cip                     = 335545236;
+	isc_tom_crypt_cip                    = 335545237;
+	isc_tom_decrypt_cip                  = 335545238;
+	isc_tom_setup_cip                    = 335545239;
+	isc_tom_setup_chacha                 = 335545240;
+	isc_tom_encode                       = 335545241;
+	isc_tom_decode                       = 335545242;
+	isc_tom_rsa_import                   = 335545243;
+	isc_tom_oaep                         = 335545244;
+	isc_tom_hash_bad                     = 335545245;
+	isc_tom_rsa_make                     = 335545246;
+	isc_tom_rsa_export                   = 335545247;
+	isc_tom_rsa_sign                     = 335545248;
+	isc_tom_rsa_verify                   = 335545249;
+	isc_tom_chacha_key                   = 335545250;
+	isc_bad_repl_handle                  = 335545251;
+	isc_tra_snapshot_does_not_exist      = 335545252;
+	isc_eds_input_prm_not_used           = 335545253;
+	isc_effective_user                   = 335545254;
+	isc_invalid_time_zone_bind           = 335545255;
+	isc_invalid_decfloat_bind            = 335545256;
+	isc_odd_hex_len                      = 335545257;
+	isc_invalid_hex_digit                = 335545258;
+	isc_bind_err                         = 335545259;
+	isc_bind_statement                   = 335545260;
+	isc_bind_convert                     = 335545261;
+	isc_cannot_update_old_blob           = 335545262;
+	isc_cannot_read_new_blob             = 335545263;
+	isc_dyn_no_create_priv               = 335545264;
+	isc_suspend_without_returns          = 335545265;
+	isc_truncate_warn                    = 335545266;
+	isc_truncate_monitor                 = 335545267;
+	isc_truncate_context                 = 335545268;
+	isc_merge_dup_update                 = 335545269;
+	isc_wrong_page                       = 335545270;
+	isc_repl_error                       = 335545271;
+	isc_ses_reset_failed                 = 335545272;
+	isc_block_size                       = 335545273;
+	isc_tom_key_length                   = 335545274;
+	isc_inf_invalid_args                 = 335545275;
+	isc_sysf_invalid_null_empty          = 335545276;
 	isc_gfix_db_name                     = 335740929;
 	isc_gfix_invalid_sw                  = 335740930;
 	isc_gfix_incmp_sw                    = 335740932;
@@ -4332,6 +5225,8 @@ const
 	isc_dsql_no_input_sqlda              = 336003109;
 	isc_dsql_no_output_sqlda             = 336003110;
 	isc_dsql_wrong_param_num             = 336003111;
+	isc_dsql_invalid_drop_ss_clause      = 336003112;
+	isc_upd_ins_cannot_default           = 336003113;
 	isc_dyn_filter_not_found             = 336068645;
 	isc_dyn_func_not_found               = 336068649;
 	isc_dyn_index_not_found              = 336068656;
@@ -4408,6 +5303,19 @@ const
 	isc_dyn_cant_use_zero_increment      = 336068896;
 	isc_dyn_cant_use_in_foreignkey       = 336068897;
 	isc_dyn_defvaldecl_package_func      = 336068898;
+	isc_dyn_cyclic_role                  = 336068900;
+	isc_dyn_cant_use_zero_inc_ident      = 336068904;
+	isc_dyn_no_ddl_grant_opt_priv        = 336068907;
+	isc_dyn_no_grant_opt_priv            = 336068908;
+	isc_dyn_func_not_exist               = 336068909;
+	isc_dyn_proc_not_exist               = 336068910;
+	isc_dyn_pack_not_exist               = 336068911;
+	isc_dyn_trig_not_exist               = 336068912;
+	isc_dyn_view_not_exist               = 336068913;
+	isc_dyn_rel_not_exist                = 336068914;
+	isc_dyn_exc_not_exist                = 336068915;
+	isc_dyn_gen_not_exist                = 336068916;
+	isc_dyn_fld_not_exist                = 336068917;
 	isc_gbak_unknown_switch              = 336330753;
 	isc_gbak_page_size_missing           = 336330754;
 	isc_gbak_page_size_toobig            = 336330755;
@@ -4635,6 +5543,7 @@ const
 	isc_dsql_string_byte_length          = 336397331;
 	isc_dsql_string_char_length          = 336397332;
 	isc_dsql_max_nesting                 = 336397333;
+	isc_dsql_recreate_user_failed        = 336397334;
 	isc_gsec_cant_open_db                = 336723983;
 	isc_gsec_switches_error              = 336723984;
 	isc_gsec_no_op_spec                  = 336723985;
@@ -4685,6 +5594,10 @@ const
 	isc_fbsvcmgr_fp_read                 = 336986161;
 	isc_fbsvcmgr_fp_empty                = 336986162;
 	isc_fbsvcmgr_bad_arg                 = 336986164;
+	isc_fbsvcmgr_info_limbo              = 336986170;
+	isc_fbsvcmgr_limbo_state             = 336986171;
+	isc_fbsvcmgr_limbo_advise            = 336986172;
+	isc_fbsvcmgr_bad_rm                  = 336986173;
 	isc_utl_trusted_switch               = 337051649;
 	isc_nbackup_missing_param            = 337117213;
 	isc_nbackup_allowed_switches         = 337117214;
@@ -4726,6 +5639,8 @@ const
 	isc_nbackup_switchd_parameter        = 337117255;
 	isc_nbackup_user_stop                = 337117257;
 	isc_nbackup_deco_parse               = 337117259;
+	isc_nbackup_lostrec_guid_db          = 337117261;
+	isc_nbackup_seq_misuse               = 337117265;
 	isc_trace_conflict_acts              = 337182750;
 	isc_trace_act_notfound               = 337182751;
 	isc_trace_switch_once                = 337182752;
@@ -4737,7 +5652,6 @@ const
 	isc_trace_switch_param_miss          = 337182758;
 	isc_trace_param_act_notcompat        = 337182759;
 	isc_trace_mandatory_switch_miss      = 337182760;
-
 implementation
 
 procedure IReferenceCounted.addRef();
@@ -4963,6 +5877,18 @@ begin
 	Result := FirebirdConfVTable(vTable).asBoolean(Self, key);
 end;
 
+function IFirebirdConf.getVersion(status: IStatus): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IFirebirdConf', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := FirebirdConfVTable(vTable).getVersion(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
 function IPluginConfig.getConfigFileName(): PAnsiChar;
 begin
 	Result := PluginConfigVTable(vTable).getConfigFileName(Self);
@@ -4999,7 +5925,11 @@ end;
 
 procedure IPluginModule.threadDetach();
 begin
-	PluginModuleVTable(vTable).threadDetach(Self);
+	if (vTable.version < 3) then begin
+	end
+	else begin
+		PluginModuleVTable(vTable).threadDetach(Self);
+	end;
 end;
 
 procedure IPluginManager.registerPluginFactory(pluginType: Cardinal; defaultName: PAnsiChar; factory: IPluginFactory);
@@ -5086,6 +6016,16 @@ begin
 	Result := ConfigManagerVTable(vTable).getRootDirectory(Self);
 end;
 
+function IConfigManager.getDefaultSecurityDb(): PAnsiChar;
+begin
+	if (vTable.version < 3) then begin
+		Result := nil;
+	end
+	else begin
+		Result := ConfigManagerVTable(vTable).getDefaultSecurityDb(Self);
+	end;
+end;
+
 procedure IEventCallback.eventCallbackFunction(length: Cardinal; events: BytePtr);
 begin
 	EventCallbackVTable(vTable).eventCallbackFunction(Self, length, events);
@@ -5109,21 +6049,53 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure IBlob.cancel(status: IStatus);
+procedure IBlob.deprecatedCancel(status: IStatus);
 begin
-	BlobVTable(vTable).cancel(Self, status);
+	BlobVTable(vTable).deprecatedCancel(Self, status);
 	FbException.checkException(status);
 end;
 
-procedure IBlob.close(status: IStatus);
+procedure IBlob.deprecatedClose(status: IStatus);
 begin
-	BlobVTable(vTable).close(Self, status);
+	BlobVTable(vTable).deprecatedClose(Self, status);
 	FbException.checkException(status);
 end;
 
 function IBlob.seek(status: IStatus; mode: Integer; offset: Integer): Integer;
 begin
 	Result := BlobVTable(vTable).seek(Self, status, mode, offset);
+	FbException.checkException(status);
+end;
+
+procedure IBlob.cancel(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IBlob', vTable.version, 4);
+		end
+		else begin
+			deprecatedCancel(status);
+		end
+	end
+	else begin
+		BlobVTable(vTable).cancel(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IBlob.close(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IBlob', vTable.version, 4);
+		end
+		else begin
+			deprecatedClose(status);
+		end
+	end
+	else begin
+		BlobVTable(vTable).close(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -5139,9 +6111,9 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure ITransaction.commit(status: IStatus);
+procedure ITransaction.deprecatedCommit(status: IStatus);
 begin
-	TransactionVTable(vTable).commit(Self, status);
+	TransactionVTable(vTable).deprecatedCommit(Self, status);
 	FbException.checkException(status);
 end;
 
@@ -5151,9 +6123,9 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure ITransaction.rollback(status: IStatus);
+procedure ITransaction.deprecatedRollback(status: IStatus);
 begin
-	TransactionVTable(vTable).rollback(Self, status);
+	TransactionVTable(vTable).deprecatedRollback(Self, status);
 	FbException.checkException(status);
 end;
 
@@ -5163,9 +6135,9 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure ITransaction.disconnect(status: IStatus);
+procedure ITransaction.deprecatedDisconnect(status: IStatus);
 begin
-	TransactionVTable(vTable).disconnect(Self, status);
+	TransactionVTable(vTable).deprecatedDisconnect(Self, status);
 	FbException.checkException(status);
 end;
 
@@ -5184,6 +6156,54 @@ end;
 function ITransaction.enterDtc(status: IStatus): ITransaction;
 begin
 	Result := TransactionVTable(vTable).enterDtc(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure ITransaction.commit(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'ITransaction', vTable.version, 4);
+		end
+		else begin
+			deprecatedCommit(status);
+		end
+	end
+	else begin
+		TransactionVTable(vTable).commit(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure ITransaction.rollback(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'ITransaction', vTable.version, 4);
+		end
+		else begin
+			deprecatedRollback(status);
+		end
+	end
+	else begin
+		TransactionVTable(vTable).rollback(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure ITransaction.disconnect(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'ITransaction', vTable.version, 4);
+		end
+		else begin
+			deprecatedDisconnect(status);
+		end
+	end
+	else begin
+		TransactionVTable(vTable).disconnect(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -5277,6 +6297,30 @@ begin
 	FbException.checkException(status);
 end;
 
+function IMessageMetadata.getAlignment(status: IStatus): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IMessageMetadata', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := MessageMetadataVTable(vTable).getAlignment(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+function IMessageMetadata.getAlignedLength(status: IStatus): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IMessageMetadata', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := MessageMetadataVTable(vTable).getAlignedLength(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
 procedure IMetadataBuilder.setType(status: IStatus; index: Cardinal; type_: Cardinal);
 begin
 	MetadataBuilderVTable(vTable).setType(Self, status, index, type_);
@@ -5337,6 +6381,50 @@ begin
 	FbException.checkException(status);
 end;
 
+procedure IMetadataBuilder.setField(status: IStatus; index: Cardinal; field: PAnsiChar);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IMetadataBuilder', vTable.version, 4);
+	end
+	else begin
+		MetadataBuilderVTable(vTable).setField(Self, status, index, field);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IMetadataBuilder.setRelation(status: IStatus; index: Cardinal; relation: PAnsiChar);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IMetadataBuilder', vTable.version, 4);
+	end
+	else begin
+		MetadataBuilderVTable(vTable).setRelation(Self, status, index, relation);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IMetadataBuilder.setOwner(status: IStatus; index: Cardinal; owner: PAnsiChar);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IMetadataBuilder', vTable.version, 4);
+	end
+	else begin
+		MetadataBuilderVTable(vTable).setOwner(Self, status, index, owner);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IMetadataBuilder.setAlias(status: IStatus; index: Cardinal; alias: PAnsiChar);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IMetadataBuilder', vTable.version, 4);
+	end
+	else begin
+		MetadataBuilderVTable(vTable).setAlias(Self, status, index, alias);
+	end;
+	FbException.checkException(status);
+end;
+
 function IResultSet.fetchNext(status: IStatus; message: Pointer): Integer;
 begin
 	Result := ResultSetVTable(vTable).fetchNext(Self, status, message);
@@ -5391,15 +6479,31 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure IResultSet.close(status: IStatus);
+procedure IResultSet.deprecatedClose(status: IStatus);
 begin
-	ResultSetVTable(vTable).close(Self, status);
+	ResultSetVTable(vTable).deprecatedClose(Self, status);
 	FbException.checkException(status);
 end;
 
 procedure IResultSet.setDelayedOutputFormat(status: IStatus; format: IMessageMetadata);
 begin
 	ResultSetVTable(vTable).setDelayedOutputFormat(Self, status, format);
+	FbException.checkException(status);
+end;
+
+procedure IResultSet.close(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IResultSet', vTable.version, 4);
+		end
+		else begin
+			deprecatedClose(status);
+		end
+	end
+	else begin
+		ResultSetVTable(vTable).close(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -5457,9 +6561,9 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure IStatement.free(status: IStatus);
+procedure IStatement.deprecatedFree(status: IStatus);
 begin
-	StatementVTable(vTable).free(Self, status);
+	StatementVTable(vTable).deprecatedFree(Self, status);
 	FbException.checkException(status);
 end;
 
@@ -5469,13 +6573,209 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure IRequest.receive(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr);
+function IStatement.getTimeout(status: IStatus): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IStatement', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := StatementVTable(vTable).getTimeout(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IStatement.setTimeout(status: IStatus; timeOut: Cardinal);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IStatement', vTable.version, 4);
+	end
+	else begin
+		StatementVTable(vTable).setTimeout(Self, status, timeOut);
+	end;
+	FbException.checkException(status);
+end;
+
+function IStatement.createBatch(status: IStatus; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IStatement', vTable.version, 4);
+		Result := nil;
+	end
+	else begin
+		Result := StatementVTable(vTable).createBatch(Self, status, inMetadata, parLength, par);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IStatement.free(status: IStatus);
+begin
+	if (vTable.version < 5) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IStatement', vTable.version, 5);
+		end
+		else begin
+			deprecatedFree(status);
+		end
+	end
+	else begin
+		StatementVTable(vTable).free(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IBatch.add(status: IStatus; count: Cardinal; inBuffer: Pointer);
+begin
+	BatchVTable(vTable).add(Self, status, count, inBuffer);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.addBlob(status: IStatus; length: Cardinal; inBuffer: Pointer; blobId: ISC_QUADPtr; parLength: Cardinal; par: BytePtr);
+begin
+	BatchVTable(vTable).addBlob(Self, status, length, inBuffer, blobId, parLength, par);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.appendBlobData(status: IStatus; length: Cardinal; inBuffer: Pointer);
+begin
+	BatchVTable(vTable).appendBlobData(Self, status, length, inBuffer);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.addBlobStream(status: IStatus; length: Cardinal; inBuffer: Pointer);
+begin
+	BatchVTable(vTable).addBlobStream(Self, status, length, inBuffer);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.registerBlob(status: IStatus; existingBlob: ISC_QUADPtr; blobId: ISC_QUADPtr);
+begin
+	BatchVTable(vTable).registerBlob(Self, status, existingBlob, blobId);
+	FbException.checkException(status);
+end;
+
+function IBatch.execute(status: IStatus; transaction: ITransaction): IBatchCompletionState;
+begin
+	Result := BatchVTable(vTable).execute(Self, status, transaction);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.cancel(status: IStatus);
+begin
+	BatchVTable(vTable).cancel(Self, status);
+	FbException.checkException(status);
+end;
+
+function IBatch.getBlobAlignment(status: IStatus): Cardinal;
+begin
+	Result := BatchVTable(vTable).getBlobAlignment(Self, status);
+	FbException.checkException(status);
+end;
+
+function IBatch.getMetadata(status: IStatus): IMessageMetadata;
+begin
+	Result := BatchVTable(vTable).getMetadata(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.setDefaultBpb(status: IStatus; parLength: Cardinal; par: BytePtr);
+begin
+	BatchVTable(vTable).setDefaultBpb(Self, status, parLength, par);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.deprecatedClose(status: IStatus);
+begin
+	BatchVTable(vTable).deprecatedClose(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IBatch.close(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IBatch', vTable.version, 4);
+		end
+		else begin
+			deprecatedClose(status);
+		end
+	end
+	else begin
+		BatchVTable(vTable).close(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IBatch.getInfo(status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IBatch', vTable.version, 4);
+	end
+	else begin
+		BatchVTable(vTable).getInfo(Self, status, itemsLength, items, bufferLength, buffer);
+	end;
+	FbException.checkException(status);
+end;
+
+function IBatchCompletionState.getSize(status: IStatus): Cardinal;
+begin
+	Result := BatchCompletionStateVTable(vTable).getSize(Self, status);
+	FbException.checkException(status);
+end;
+
+function IBatchCompletionState.getState(status: IStatus; pos: Cardinal): Integer;
+begin
+	Result := BatchCompletionStateVTable(vTable).getState(Self, status, pos);
+	FbException.checkException(status);
+end;
+
+function IBatchCompletionState.findError(status: IStatus; pos: Cardinal): Cardinal;
+begin
+	Result := BatchCompletionStateVTable(vTable).findError(Self, status, pos);
+	FbException.checkException(status);
+end;
+
+procedure IBatchCompletionState.getStatus(status: IStatus; to_: IStatus; pos: Cardinal);
+begin
+	BatchCompletionStateVTable(vTable).getStatus(Self, status, to_, pos);
+	FbException.checkException(status);
+end;
+
+procedure IReplicator.process(status: IStatus; length: Cardinal; data: BytePtr);
+begin
+	ReplicatorVTable(vTable).process(Self, status, length, data);
+	FbException.checkException(status);
+end;
+
+procedure IReplicator.deprecatedClose(status: IStatus);
+begin
+	ReplicatorVTable(vTable).deprecatedClose(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicator.close(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IReplicator', vTable.version, 4);
+		end
+		else begin
+			deprecatedClose(status);
+		end
+	end
+	else begin
+		ReplicatorVTable(vTable).close(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IRequest.receive(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer);
 begin
 	RequestVTable(vTable).receive(Self, status, level, msgType, length, message);
 	FbException.checkException(status);
 end;
 
-procedure IRequest.send(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr);
+procedure IRequest.send(status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer);
 begin
 	RequestVTable(vTable).send(Self, status, level, msgType, length, message);
 	FbException.checkException(status);
@@ -5493,7 +6793,7 @@ begin
 	FbException.checkException(status);
 end;
 
-procedure IRequest.startAndSend(status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr);
+procedure IRequest.startAndSend(status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer);
 begin
 	RequestVTable(vTable).startAndSend(Self, status, tra, level, msgType, length, message);
 	FbException.checkException(status);
@@ -5505,15 +6805,47 @@ begin
 	FbException.checkException(status);
 end;
 
+procedure IRequest.deprecatedFree(status: IStatus);
+begin
+	RequestVTable(vTable).deprecatedFree(Self, status);
+	FbException.checkException(status);
+end;
+
 procedure IRequest.free(status: IStatus);
 begin
-	RequestVTable(vTable).free(Self, status);
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IRequest', vTable.version, 4);
+		end
+		else begin
+			deprecatedFree(status);
+		end
+	end
+	else begin
+		RequestVTable(vTable).free(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IEvents.deprecatedCancel(status: IStatus);
+begin
+	EventsVTable(vTable).deprecatedCancel(Self, status);
 	FbException.checkException(status);
 end;
 
 procedure IEvents.cancel(status: IStatus);
 begin
-	EventsVTable(vTable).cancel(Self, status);
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IEvents', vTable.version, 4);
+		end
+		else begin
+			deprecatedCancel(status);
+		end
+	end
+	else begin
+		EventsVTable(vTable).cancel(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -5613,21 +6945,123 @@ begin
 	FbException.checkException(status);
 end;
 
+procedure IAttachment.deprecatedDetach(status: IStatus);
+begin
+	AttachmentVTable(vTable).deprecatedDetach(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IAttachment.deprecatedDropDatabase(status: IStatus);
+begin
+	AttachmentVTable(vTable).deprecatedDropDatabase(Self, status);
+	FbException.checkException(status);
+end;
+
+function IAttachment.getIdleTimeout(status: IStatus): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IAttachment', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := AttachmentVTable(vTable).getIdleTimeout(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IAttachment.setIdleTimeout(status: IStatus; timeOut: Cardinal);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IAttachment', vTable.version, 4);
+	end
+	else begin
+		AttachmentVTable(vTable).setIdleTimeout(Self, status, timeOut);
+	end;
+	FbException.checkException(status);
+end;
+
+function IAttachment.getStatementTimeout(status: IStatus): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IAttachment', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := AttachmentVTable(vTable).getStatementTimeout(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IAttachment.setStatementTimeout(status: IStatus; timeOut: Cardinal);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IAttachment', vTable.version, 4);
+	end
+	else begin
+		AttachmentVTable(vTable).setStatementTimeout(Self, status, timeOut);
+	end;
+	FbException.checkException(status);
+end;
+
+function IAttachment.createBatch(status: IStatus; transaction: ITransaction; stmtLength: Cardinal; sqlStmt: PAnsiChar; dialect: Cardinal; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IAttachment', vTable.version, 4);
+		Result := nil;
+	end
+	else begin
+		Result := AttachmentVTable(vTable).createBatch(Self, status, transaction, stmtLength, sqlStmt, dialect, inMetadata, parLength, par);
+	end;
+	FbException.checkException(status);
+end;
+
+function IAttachment.createReplicator(status: IStatus): IReplicator;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IAttachment', vTable.version, 4);
+		Result := nil;
+	end
+	else begin
+		Result := AttachmentVTable(vTable).createReplicator(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
 procedure IAttachment.detach(status: IStatus);
 begin
-	AttachmentVTable(vTable).detach(Self, status);
+	if (vTable.version < 5) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IAttachment', vTable.version, 5);
+		end
+		else begin
+			deprecatedDetach(status);
+		end
+	end
+	else begin
+		AttachmentVTable(vTable).detach(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
 procedure IAttachment.dropDatabase(status: IStatus);
 begin
-	AttachmentVTable(vTable).dropDatabase(Self, status);
+	if (vTable.version < 5) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IAttachment', vTable.version, 5);
+		end
+		else begin
+			deprecatedDropDatabase(status);
+		end
+	end
+	else begin
+		AttachmentVTable(vTable).dropDatabase(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
-procedure IService.detach(status: IStatus);
+procedure IService.deprecatedDetach(status: IStatus);
 begin
-	ServiceVTable(vTable).detach(Self, status);
+	ServiceVTable(vTable).deprecatedDetach(Self, status);
 	FbException.checkException(status);
 end;
 
@@ -5640,6 +7074,33 @@ end;
 procedure IService.start(status: IStatus; spbLength: Cardinal; spb: BytePtr);
 begin
 	ServiceVTable(vTable).start(Self, status, spbLength, spb);
+	FbException.checkException(status);
+end;
+
+procedure IService.detach(status: IStatus);
+begin
+	if (vTable.version < 4) then begin
+		if FB_UsedInYValve then begin
+			FbException.setVersionError(status, 'IService', vTable.version, 4);
+		end
+		else begin
+			deprecatedDetach(status);
+		end
+	end
+	else begin
+		ServiceVTable(vTable).detach(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IService.cancel(status: IStatus);
+begin
+	if (vTable.version < 5) then begin
+		FbException.setVersionError(status, 'IService', vTable.version, 5);
+	end
+	else begin
+		ServiceVTable(vTable).cancel(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -5775,6 +7236,18 @@ begin
 	FbException.checkException(status);
 end;
 
+function IClientBlock.getAuthBlock(status: IStatus): IAuthBlock;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IClientBlock', vTable.version, 4);
+		Result := nil;
+	end
+	else begin
+		Result := ClientBlockVTable(vTable).getAuthBlock(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
 function IServer.authenticate(status: IStatus; sBlock: IServerBlock; writerInterface: IWriter): Integer;
 begin
 	Result := ServerVTable(vTable).authenticate(Self, status, sBlock, writerInterface);
@@ -5783,7 +7256,12 @@ end;
 
 procedure IServer.setDbCryptCallback(status: IStatus; cryptCallback: ICryptKeyCallback);
 begin
-	ServerVTable(vTable).setDbCryptCallback(Self, status, cryptCallback);
+	if (vTable.version < 6) then begin
+		FbException.setVersionError(status, 'IServer', vTable.version, 6);
+	end
+	else begin
+		ServerVTable(vTable).setDbCryptCallback(Self, status, cryptCallback);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -5918,6 +7396,30 @@ begin
 	Result := LogonInfoVTable(vTable).authBlock(Self, length);
 end;
 
+function ILogonInfo.attachment(status: IStatus): IAttachment;
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'ILogonInfo', vTable.version, 3);
+		Result := nil;
+	end
+	else begin
+		Result := LogonInfoVTable(vTable).attachment(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+function ILogonInfo.transaction(status: IStatus): ITransaction;
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'ILogonInfo', vTable.version, 3);
+		Result := nil;
+	end
+	else begin
+		Result := LogonInfoVTable(vTable).transaction(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
 procedure IManagement.start(status: IStatus; logonInfo: ILogonInfo);
 begin
 	ManagementVTable(vTable).start(Self, status, logonInfo);
@@ -5939,6 +7441,43 @@ end;
 procedure IManagement.rollback(status: IStatus);
 begin
 	ManagementVTable(vTable).rollback(Self, status);
+	FbException.checkException(status);
+end;
+
+function IAuthBlock.getType(): PAnsiChar;
+begin
+	Result := AuthBlockVTable(vTable).getType(Self);
+end;
+
+function IAuthBlock.getName(): PAnsiChar;
+begin
+	Result := AuthBlockVTable(vTable).getName(Self);
+end;
+
+function IAuthBlock.getPlugin(): PAnsiChar;
+begin
+	Result := AuthBlockVTable(vTable).getPlugin(Self);
+end;
+
+function IAuthBlock.getSecurityDb(): PAnsiChar;
+begin
+	Result := AuthBlockVTable(vTable).getSecurityDb(Self);
+end;
+
+function IAuthBlock.getOriginalPlugin(): PAnsiChar;
+begin
+	Result := AuthBlockVTable(vTable).getOriginalPlugin(Self);
+end;
+
+function IAuthBlock.next(status: IStatus): Boolean;
+begin
+	Result := AuthBlockVTable(vTable).next(Self, status);
+	FbException.checkException(status);
+end;
+
+function IAuthBlock.first(status: IStatus): Boolean;
+begin
+	Result := AuthBlockVTable(vTable).first(Self, status);
 	FbException.checkException(status);
 end;
 
@@ -5966,6 +7505,29 @@ begin
 	FbException.checkException(status);
 end;
 
+function IWireCryptPlugin.getSpecificData(status: IStatus; keyType: PAnsiChar; length: CardinalPtr): BytePtr;
+begin
+	if (vTable.version < 5) then begin
+		FbException.setVersionError(status, 'IWireCryptPlugin', vTable.version, 5);
+		Result := nil;
+	end
+	else begin
+		Result := WireCryptPluginVTable(vTable).getSpecificData(Self, status, keyType, length);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IWireCryptPlugin.setSpecificData(status: IStatus; keyType: PAnsiChar; length: Cardinal; data: BytePtr);
+begin
+	if (vTable.version < 5) then begin
+		FbException.setVersionError(status, 'IWireCryptPlugin', vTable.version, 5);
+	end
+	else begin
+		WireCryptPluginVTable(vTable).setSpecificData(Self, status, keyType, length, data);
+	end;
+	FbException.checkException(status);
+end;
+
 function ICryptKeyCallback.callback(dataLength: Cardinal; data: Pointer; bufferLength: Cardinal; buffer: Pointer): Cardinal;
 begin
 	Result := CryptKeyCallbackVTable(vTable).callback(Self, dataLength, data, bufferLength, buffer);
@@ -5985,13 +7547,25 @@ end;
 
 function IKeyHolderPlugin.useOnlyOwnKeys(status: IStatus): Boolean;
 begin
-	Result := KeyHolderPluginVTable(vTable).useOnlyOwnKeys(Self, status);
+	if (vTable.version < 5) then begin
+		FbException.setVersionError(status, 'IKeyHolderPlugin', vTable.version, 5);
+		Result := false;
+	end
+	else begin
+		Result := KeyHolderPluginVTable(vTable).useOnlyOwnKeys(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
 function IKeyHolderPlugin.chainHandle(status: IStatus): ICryptKeyCallback;
 begin
-	Result := KeyHolderPluginVTable(vTable).chainHandle(Self, status);
+	if (vTable.version < 5) then begin
+		FbException.setVersionError(status, 'IKeyHolderPlugin', vTable.version, 5);
+		Result := nil;
+	end
+	else begin
+		Result := KeyHolderPluginVTable(vTable).chainHandle(Self, status);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -6021,7 +7595,12 @@ end;
 
 procedure IDbCryptPlugin.setInfo(status: IStatus; info: IDbCryptInfo);
 begin
-	DbCryptPluginVTable(vTable).setInfo(Self, status, info);
+	if (vTable.version < 5) then begin
+		FbException.setVersionError(status, 'IDbCryptPlugin', vTable.version, 5);
+	end
+	else begin
+		DbCryptPluginVTable(vTable).setInfo(Self, status, info);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -6305,6 +7884,108 @@ begin
 	FbException.checkException(status);
 end;
 
+function IUtil.getDecFloat16(status: IStatus): IDecFloat16;
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 3);
+		Result := nil;
+	end
+	else begin
+		Result := UtilVTable(vTable).getDecFloat16(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+function IUtil.getDecFloat34(status: IStatus): IDecFloat34;
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 3);
+		Result := nil;
+	end
+	else begin
+		Result := UtilVTable(vTable).getDecFloat34(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IUtil.decodeTimeTz(status: IStatus; timeTz: ISC_TIME_TZPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 3);
+	end
+	else begin
+		UtilVTable(vTable).decodeTimeTz(Self, status, timeTz, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IUtil.decodeTimeStampTz(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 3);
+	end
+	else begin
+		UtilVTable(vTable).decodeTimeStampTz(Self, status, timeStampTz, year, month, day, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IUtil.encodeTimeTz(status: IStatus; timeTz: ISC_TIME_TZPtr; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar);
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 3);
+	end
+	else begin
+		UtilVTable(vTable).encodeTimeTz(Self, status, timeTz, hours, minutes, seconds, fractions, timeZone);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IUtil.encodeTimeStampTz(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: Cardinal; month: Cardinal; day: Cardinal; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar);
+begin
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 3);
+	end
+	else begin
+		UtilVTable(vTable).encodeTimeStampTz(Self, status, timeStampTz, year, month, day, hours, minutes, seconds, fractions, timeZone);
+	end;
+	FbException.checkException(status);
+end;
+
+function IUtil.getInt128(status: IStatus): IInt128;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 4);
+		Result := nil;
+	end
+	else begin
+		Result := UtilVTable(vTable).getInt128(Self, status);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IUtil.decodeTimeTzEx(status: IStatus; timeTz: ISC_TIME_TZ_EXPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 4);
+	end
+	else begin
+		UtilVTable(vTable).decodeTimeTzEx(Self, status, timeTz, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	end;
+	FbException.checkException(status);
+end;
+
+procedure IUtil.decodeTimeStampTzEx(status: IStatus; timeStampTz: ISC_TIMESTAMP_TZ_EXPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar);
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'IUtil', vTable.version, 4);
+	end
+	else begin
+		UtilVTable(vTable).decodeTimeStampTzEx(Self, status, timeStampTz, year, month, day, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	end;
+	FbException.checkException(status);
+end;
+
 procedure IOffsetsCallback.setOffset(status: IStatus; index: Cardinal; offset: Cardinal; nullOffset: Cardinal);
 begin
 	OffsetsCallbackVTable(vTable).setOffset(Self, status, index, offset, nullOffset);
@@ -6511,6 +8192,26 @@ begin
 	Result := TraceTransactionVTable(vTable).getPerf(Self);
 end;
 
+function ITraceTransaction.getInitialID(): Int64;
+begin
+	if (vTable.version < 3) then begin
+		Result := 0;
+	end
+	else begin
+		Result := TraceTransactionVTable(vTable).getInitialID(Self);
+	end;
+end;
+
+function ITraceTransaction.getPreviousID(): Int64;
+begin
+	if (vTable.version < 3) then begin
+		Result := 0;
+	end
+	else begin
+		Result := TraceTransactionVTable(vTable).getPreviousID(Self);
+	end;
+end;
+
 function ITraceParams.getCount(): Cardinal;
 begin
 	Result := TraceParamsVTable(vTable).getCount(Self);
@@ -6523,7 +8224,13 @@ end;
 
 function ITraceParams.getTextUTF8(status: IStatus; idx: Cardinal): PAnsiChar;
 begin
-	Result := TraceParamsVTable(vTable).getTextUTF8(Self, status, idx);
+	if (vTable.version < 3) then begin
+		FbException.setVersionError(status, 'ITraceParams', vTable.version, 3);
+		Result := nil;
+	end
+	else begin
+		Result := TraceParamsVTable(vTable).getTextUTF8(Self, status, idx);
+	end;
 	FbException.checkException(status);
 end;
 
@@ -6732,6 +8439,18 @@ begin
 	Result := TraceLogWriterVTable(vTable).write(Self, buf, size);
 end;
 
+function ITraceLogWriter.write_s(status: IStatus; buf: Pointer; size: Cardinal): Cardinal;
+begin
+	if (vTable.version < 4) then begin
+		FbException.setVersionError(status, 'ITraceLogWriter', vTable.version, 4);
+		Result := 0;
+	end
+	else begin
+		Result := TraceLogWriterVTable(vTable).write_s(Self, status, buf, size);
+	end;
+	FbException.checkException(status);
+end;
+
 function ITraceInitInfo.getConfigText(): PAnsiChar;
 begin
 	Result := TraceInitInfoVTable(vTable).getConfigText(Self);
@@ -6872,6 +8591,16 @@ begin
 	Result := TracePluginVTable(vTable).trace_func_execute(Self, connection, transaction, function_, started, func_result);
 end;
 
+function ITracePlugin.trace_dsql_restart(connection: ITraceDatabaseConnection; transaction: ITraceTransaction; statement: ITraceSQLStatement; number: Cardinal): Boolean;
+begin
+	if (vTable.version < 4) then begin
+		Result := false;
+	end
+	else begin
+		Result := TracePluginVTable(vTable).trace_dsql_restart(Self, connection, transaction, statement, number);
+	end;
+end;
+
 function ITraceFactory.trace_needs(): QWord;
 begin
 	Result := TraceFactoryVTable(vTable).trace_needs(Self);
@@ -6939,6 +8668,207 @@ end;
 procedure IUdrPlugin.registerTrigger(status: IStatus; name: PAnsiChar; factory: IUdrTriggerFactory);
 begin
 	UdrPluginVTable(vTable).registerTrigger(Self, status, name, factory);
+	FbException.checkException(status);
+end;
+
+procedure IDecFloat16.toBcd(from: FB_DEC16Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr);
+begin
+	DecFloat16VTable(vTable).toBcd(Self, from, sign, bcd, exp);
+end;
+
+procedure IDecFloat16.toString(status: IStatus; from: FB_DEC16Ptr; bufferLength: Cardinal; buffer: PAnsiChar);
+begin
+	DecFloat16VTable(vTable).toString(Self, status, from, bufferLength, buffer);
+	FbException.checkException(status);
+end;
+
+procedure IDecFloat16.fromBcd(sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC16Ptr);
+begin
+	DecFloat16VTable(vTable).fromBcd(Self, sign, bcd, exp, to_);
+end;
+
+procedure IDecFloat16.fromString(status: IStatus; from: PAnsiChar; to_: FB_DEC16Ptr);
+begin
+	DecFloat16VTable(vTable).fromString(Self, status, from, to_);
+	FbException.checkException(status);
+end;
+
+procedure IDecFloat34.toBcd(from: FB_DEC34Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr);
+begin
+	DecFloat34VTable(vTable).toBcd(Self, from, sign, bcd, exp);
+end;
+
+procedure IDecFloat34.toString(status: IStatus; from: FB_DEC34Ptr; bufferLength: Cardinal; buffer: PAnsiChar);
+begin
+	DecFloat34VTable(vTable).toString(Self, status, from, bufferLength, buffer);
+	FbException.checkException(status);
+end;
+
+procedure IDecFloat34.fromBcd(sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC34Ptr);
+begin
+	DecFloat34VTable(vTable).fromBcd(Self, sign, bcd, exp, to_);
+end;
+
+procedure IDecFloat34.fromString(status: IStatus; from: PAnsiChar; to_: FB_DEC34Ptr);
+begin
+	DecFloat34VTable(vTable).fromString(Self, status, from, to_);
+	FbException.checkException(status);
+end;
+
+procedure IInt128.toString(status: IStatus; from: FB_I128Ptr; scale: Integer; bufferLength: Cardinal; buffer: PAnsiChar);
+begin
+	Int128VTable(vTable).toString(Self, status, from, scale, bufferLength, buffer);
+	FbException.checkException(status);
+end;
+
+procedure IInt128.fromString(status: IStatus; scale: Integer; from: PAnsiChar; to_: FB_I128Ptr);
+begin
+	Int128VTable(vTable).fromString(Self, status, scale, from, to_);
+	FbException.checkException(status);
+end;
+
+function IReplicatedField.getName(): PAnsiChar;
+begin
+	Result := ReplicatedFieldVTable(vTable).getName(Self);
+end;
+
+function IReplicatedField.getType(): Cardinal;
+begin
+	Result := ReplicatedFieldVTable(vTable).getType(Self);
+end;
+
+function IReplicatedField.getSubType(): Integer;
+begin
+	Result := ReplicatedFieldVTable(vTable).getSubType(Self);
+end;
+
+function IReplicatedField.getScale(): Integer;
+begin
+	Result := ReplicatedFieldVTable(vTable).getScale(Self);
+end;
+
+function IReplicatedField.getLength(): Cardinal;
+begin
+	Result := ReplicatedFieldVTable(vTable).getLength(Self);
+end;
+
+function IReplicatedField.getCharSet(): Cardinal;
+begin
+	Result := ReplicatedFieldVTable(vTable).getCharSet(Self);
+end;
+
+function IReplicatedField.getData(): Pointer;
+begin
+	Result := ReplicatedFieldVTable(vTable).getData(Self);
+end;
+
+function IReplicatedRecord.getCount(): Cardinal;
+begin
+	Result := ReplicatedRecordVTable(vTable).getCount(Self);
+end;
+
+function IReplicatedRecord.getField(index: Cardinal): IReplicatedField;
+begin
+	Result := ReplicatedRecordVTable(vTable).getField(Self, index);
+end;
+
+function IReplicatedRecord.getRawLength(): Cardinal;
+begin
+	Result := ReplicatedRecordVTable(vTable).getRawLength(Self);
+end;
+
+function IReplicatedRecord.getRawData(): BytePtr;
+begin
+	Result := ReplicatedRecordVTable(vTable).getRawData(Self);
+end;
+
+procedure IReplicatedTransaction.prepare(status: IStatus);
+begin
+	ReplicatedTransactionVTable(vTable).prepare(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.commit(status: IStatus);
+begin
+	ReplicatedTransactionVTable(vTable).commit(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.rollback(status: IStatus);
+begin
+	ReplicatedTransactionVTable(vTable).rollback(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.startSavepoint(status: IStatus);
+begin
+	ReplicatedTransactionVTable(vTable).startSavepoint(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.releaseSavepoint(status: IStatus);
+begin
+	ReplicatedTransactionVTable(vTable).releaseSavepoint(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.rollbackSavepoint(status: IStatus);
+begin
+	ReplicatedTransactionVTable(vTable).rollbackSavepoint(Self, status);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.insertRecord(status: IStatus; name: PAnsiChar; record_: IReplicatedRecord);
+begin
+	ReplicatedTransactionVTable(vTable).insertRecord(Self, status, name, record_);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.updateRecord(status: IStatus; name: PAnsiChar; orgRecord: IReplicatedRecord; newRecord: IReplicatedRecord);
+begin
+	ReplicatedTransactionVTable(vTable).updateRecord(Self, status, name, orgRecord, newRecord);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.deleteRecord(status: IStatus; name: PAnsiChar; record_: IReplicatedRecord);
+begin
+	ReplicatedTransactionVTable(vTable).deleteRecord(Self, status, name, record_);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.executeSql(status: IStatus; sql: PAnsiChar);
+begin
+	ReplicatedTransactionVTable(vTable).executeSql(Self, status, sql);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedTransaction.executeSqlIntl(status: IStatus; charset: Cardinal; sql: PAnsiChar);
+begin
+	ReplicatedTransactionVTable(vTable).executeSqlIntl(Self, status, charset, sql);
+	FbException.checkException(status);
+end;
+
+function IReplicatedSession.init(status: IStatus; attachment: IAttachment): Boolean;
+begin
+	Result := ReplicatedSessionVTable(vTable).init(Self, status, attachment);
+	FbException.checkException(status);
+end;
+
+function IReplicatedSession.startTransaction(status: IStatus; transaction: ITransaction; number: Int64): IReplicatedTransaction;
+begin
+	Result := ReplicatedSessionVTable(vTable).startTransaction(Self, status, transaction, number);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedSession.cleanupTransaction(status: IStatus; number: Int64);
+begin
+	ReplicatedSessionVTable(vTable).cleanupTransaction(Self, status, number);
+	FbException.checkException(status);
+end;
+
+procedure IReplicatedSession.setSequence(status: IStatus; name: PAnsiChar; value: Int64);
+begin
+	ReplicatedSessionVTable(vTable).setSequence(Self, status, name, value);
 	FbException.checkException(status);
 end;
 
@@ -7500,6 +9430,15 @@ begin
 	end
 end;
 
+function IFirebirdConfImpl_getVersionDispatcher(this: IFirebirdConf; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IFirebirdConfImpl(this).getVersion(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	IFirebirdConfImpl_vTable: FirebirdConfVTable;
 
@@ -7773,6 +9712,15 @@ begin
 	end
 end;
 
+function IConfigManagerImpl_getDefaultSecurityDbDispatcher(this: IConfigManager): PAnsiChar; cdecl;
+begin
+	try
+		Result := IConfigManagerImpl(this).getDefaultSecurityDb();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
 var
 	IConfigManagerImpl_vTable: ConfigManagerVTable;
 
@@ -7861,6 +9809,33 @@ begin
 	end
 end;
 
+procedure IBlobImpl_deprecatedCancelDispatcher(this: IBlob; status: IStatus); cdecl;
+begin
+	try
+		IBlobImpl(this).deprecatedCancel(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBlobImpl_deprecatedCloseDispatcher(this: IBlob; status: IStatus); cdecl;
+begin
+	try
+		IBlobImpl(this).deprecatedClose(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IBlobImpl_seekDispatcher(this: IBlob; status: IStatus; mode: Integer; offset: Integer): Integer; cdecl;
+begin
+	try
+		Result := IBlobImpl(this).seek(status, mode, offset);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 procedure IBlobImpl_cancelDispatcher(this: IBlob; status: IStatus); cdecl;
 begin
 	try
@@ -7874,15 +9849,6 @@ procedure IBlobImpl_closeDispatcher(this: IBlob; status: IStatus); cdecl;
 begin
 	try
 		IBlobImpl(this).close(status);
-	except
-		on e: Exception do FbException.catchException(status, e);
-	end
-end;
-
-function IBlobImpl_seekDispatcher(this: IBlob; status: IStatus; mode: Integer; offset: Integer): Integer; cdecl;
-begin
-	try
-		Result := IBlobImpl(this).seek(status, mode, offset);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -7932,10 +9898,10 @@ begin
 	end
 end;
 
-procedure ITransactionImpl_commitDispatcher(this: ITransaction; status: IStatus); cdecl;
+procedure ITransactionImpl_deprecatedCommitDispatcher(this: ITransaction; status: IStatus); cdecl;
 begin
 	try
-		ITransactionImpl(this).commit(status);
+		ITransactionImpl(this).deprecatedCommit(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -7950,10 +9916,10 @@ begin
 	end
 end;
 
-procedure ITransactionImpl_rollbackDispatcher(this: ITransaction; status: IStatus); cdecl;
+procedure ITransactionImpl_deprecatedRollbackDispatcher(this: ITransaction; status: IStatus); cdecl;
 begin
 	try
-		ITransactionImpl(this).rollback(status);
+		ITransactionImpl(this).deprecatedRollback(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -7968,10 +9934,10 @@ begin
 	end
 end;
 
-procedure ITransactionImpl_disconnectDispatcher(this: ITransaction; status: IStatus); cdecl;
+procedure ITransactionImpl_deprecatedDisconnectDispatcher(this: ITransaction; status: IStatus); cdecl;
 begin
 	try
-		ITransactionImpl(this).disconnect(status);
+		ITransactionImpl(this).deprecatedDisconnect(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -7999,6 +9965,33 @@ function ITransactionImpl_enterDtcDispatcher(this: ITransaction; status: IStatus
 begin
 	try
 		Result := ITransactionImpl(this).enterDtc(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure ITransactionImpl_commitDispatcher(this: ITransaction; status: IStatus); cdecl;
+begin
+	try
+		ITransactionImpl(this).commit(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure ITransactionImpl_rollbackDispatcher(this: ITransaction; status: IStatus); cdecl;
+begin
+	try
+		ITransactionImpl(this).rollback(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure ITransactionImpl_disconnectDispatcher(this: ITransaction; status: IStatus); cdecl;
+begin
+	try
+		ITransactionImpl(this).disconnect(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -8165,6 +10158,24 @@ begin
 	end
 end;
 
+function IMessageMetadataImpl_getAlignmentDispatcher(this: IMessageMetadata; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IMessageMetadataImpl(this).getAlignment(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IMessageMetadataImpl_getAlignedLengthDispatcher(this: IMessageMetadata; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IMessageMetadataImpl(this).getAlignedLength(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	IMessageMetadataImpl_vTable: MessageMetadataVTable;
 
@@ -8281,6 +10292,42 @@ begin
 	end
 end;
 
+procedure IMetadataBuilderImpl_setFieldDispatcher(this: IMetadataBuilder; status: IStatus; index: Cardinal; field: PAnsiChar); cdecl;
+begin
+	try
+		IMetadataBuilderImpl(this).setField(status, index, field);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IMetadataBuilderImpl_setRelationDispatcher(this: IMetadataBuilder; status: IStatus; index: Cardinal; relation: PAnsiChar); cdecl;
+begin
+	try
+		IMetadataBuilderImpl(this).setRelation(status, index, relation);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IMetadataBuilderImpl_setOwnerDispatcher(this: IMetadataBuilder; status: IStatus; index: Cardinal; owner: PAnsiChar); cdecl;
+begin
+	try
+		IMetadataBuilderImpl(this).setOwner(status, index, owner);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IMetadataBuilderImpl_setAliasDispatcher(this: IMetadataBuilder; status: IStatus; index: Cardinal; alias: PAnsiChar); cdecl;
+begin
+	try
+		IMetadataBuilderImpl(this).setAlias(status, index, alias);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	IMetadataBuilderImpl_vTable: MetadataBuilderVTable;
 
@@ -8388,10 +10435,10 @@ begin
 	end
 end;
 
-procedure IResultSetImpl_closeDispatcher(this: IResultSet; status: IStatus); cdecl;
+procedure IResultSetImpl_deprecatedCloseDispatcher(this: IResultSet; status: IStatus); cdecl;
 begin
 	try
-		IResultSetImpl(this).close(status);
+		IResultSetImpl(this).deprecatedClose(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -8401,6 +10448,15 @@ procedure IResultSetImpl_setDelayedOutputFormatDispatcher(this: IResultSet; stat
 begin
 	try
 		IResultSetImpl(this).setDelayedOutputFormat(status, format);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IResultSetImpl_closeDispatcher(this: IResultSet; status: IStatus); cdecl;
+begin
+	try
+		IResultSetImpl(this).close(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -8513,10 +10569,10 @@ begin
 	end
 end;
 
-procedure IStatementImpl_freeDispatcher(this: IStatement; status: IStatus); cdecl;
+procedure IStatementImpl_deprecatedFreeDispatcher(this: IStatement; status: IStatus); cdecl;
 begin
 	try
-		IStatementImpl(this).free(status);
+		IStatementImpl(this).deprecatedFree(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -8531,12 +10587,297 @@ begin
 	end
 end;
 
+function IStatementImpl_getTimeoutDispatcher(this: IStatement; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IStatementImpl(this).getTimeout(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IStatementImpl_setTimeoutDispatcher(this: IStatement; status: IStatus; timeOut: Cardinal); cdecl;
+begin
+	try
+		IStatementImpl(this).setTimeout(status, timeOut);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IStatementImpl_createBatchDispatcher(this: IStatement; status: IStatus; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch; cdecl;
+begin
+	try
+		Result := IStatementImpl(this).createBatch(status, inMetadata, parLength, par);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IStatementImpl_freeDispatcher(this: IStatement; status: IStatus); cdecl;
+begin
+	try
+		IStatementImpl(this).free(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	IStatementImpl_vTable: StatementVTable;
 
 constructor IStatementImpl.create;
 begin
 	vTable := IStatementImpl_vTable;
+end;
+
+procedure IBatchImpl_addRefDispatcher(this: IBatch); cdecl;
+begin
+	try
+		IBatchImpl(this).addRef();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IBatchImpl_releaseDispatcher(this: IBatch): Integer; cdecl;
+begin
+	try
+		Result := IBatchImpl(this).release();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IBatchImpl_addDispatcher(this: IBatch; status: IStatus; count: Cardinal; inBuffer: Pointer); cdecl;
+begin
+	try
+		IBatchImpl(this).add(status, count, inBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_addBlobDispatcher(this: IBatch; status: IStatus; length: Cardinal; inBuffer: Pointer; blobId: ISC_QUADPtr; parLength: Cardinal; par: BytePtr); cdecl;
+begin
+	try
+		IBatchImpl(this).addBlob(status, length, inBuffer, blobId, parLength, par);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_appendBlobDataDispatcher(this: IBatch; status: IStatus; length: Cardinal; inBuffer: Pointer); cdecl;
+begin
+	try
+		IBatchImpl(this).appendBlobData(status, length, inBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_addBlobStreamDispatcher(this: IBatch; status: IStatus; length: Cardinal; inBuffer: Pointer); cdecl;
+begin
+	try
+		IBatchImpl(this).addBlobStream(status, length, inBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_registerBlobDispatcher(this: IBatch; status: IStatus; existingBlob: ISC_QUADPtr; blobId: ISC_QUADPtr); cdecl;
+begin
+	try
+		IBatchImpl(this).registerBlob(status, existingBlob, blobId);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IBatchImpl_executeDispatcher(this: IBatch; status: IStatus; transaction: ITransaction): IBatchCompletionState; cdecl;
+begin
+	try
+		Result := IBatchImpl(this).execute(status, transaction);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_cancelDispatcher(this: IBatch; status: IStatus); cdecl;
+begin
+	try
+		IBatchImpl(this).cancel(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IBatchImpl_getBlobAlignmentDispatcher(this: IBatch; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IBatchImpl(this).getBlobAlignment(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IBatchImpl_getMetadataDispatcher(this: IBatch; status: IStatus): IMessageMetadata; cdecl;
+begin
+	try
+		Result := IBatchImpl(this).getMetadata(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_setDefaultBpbDispatcher(this: IBatch; status: IStatus; parLength: Cardinal; par: BytePtr); cdecl;
+begin
+	try
+		IBatchImpl(this).setDefaultBpb(status, parLength, par);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_deprecatedCloseDispatcher(this: IBatch; status: IStatus); cdecl;
+begin
+	try
+		IBatchImpl(this).deprecatedClose(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_closeDispatcher(this: IBatch; status: IStatus); cdecl;
+begin
+	try
+		IBatchImpl(this).close(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchImpl_getInfoDispatcher(this: IBatch; status: IStatus; itemsLength: Cardinal; items: BytePtr; bufferLength: Cardinal; buffer: BytePtr); cdecl;
+begin
+	try
+		IBatchImpl(this).getInfo(status, itemsLength, items, bufferLength, buffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IBatchImpl_vTable: BatchVTable;
+
+constructor IBatchImpl.create;
+begin
+	vTable := IBatchImpl_vTable;
+end;
+
+procedure IBatchCompletionStateImpl_disposeDispatcher(this: IBatchCompletionState); cdecl;
+begin
+	try
+		IBatchCompletionStateImpl(this).dispose();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IBatchCompletionStateImpl_getSizeDispatcher(this: IBatchCompletionState; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IBatchCompletionStateImpl(this).getSize(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IBatchCompletionStateImpl_getStateDispatcher(this: IBatchCompletionState; status: IStatus; pos: Cardinal): Integer; cdecl;
+begin
+	try
+		Result := IBatchCompletionStateImpl(this).getState(status, pos);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IBatchCompletionStateImpl_findErrorDispatcher(this: IBatchCompletionState; status: IStatus; pos: Cardinal): Cardinal; cdecl;
+begin
+	try
+		Result := IBatchCompletionStateImpl(this).findError(status, pos);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IBatchCompletionStateImpl_getStatusDispatcher(this: IBatchCompletionState; status: IStatus; to_: IStatus; pos: Cardinal); cdecl;
+begin
+	try
+		IBatchCompletionStateImpl(this).getStatus(status, to_, pos);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IBatchCompletionStateImpl_vTable: BatchCompletionStateVTable;
+
+constructor IBatchCompletionStateImpl.create;
+begin
+	vTable := IBatchCompletionStateImpl_vTable;
+end;
+
+procedure IReplicatorImpl_addRefDispatcher(this: IReplicator); cdecl;
+begin
+	try
+		IReplicatorImpl(this).addRef();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatorImpl_releaseDispatcher(this: IReplicator): Integer; cdecl;
+begin
+	try
+		Result := IReplicatorImpl(this).release();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IReplicatorImpl_processDispatcher(this: IReplicator; status: IStatus; length: Cardinal; data: BytePtr); cdecl;
+begin
+	try
+		IReplicatorImpl(this).process(status, length, data);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatorImpl_deprecatedCloseDispatcher(this: IReplicator; status: IStatus); cdecl;
+begin
+	try
+		IReplicatorImpl(this).deprecatedClose(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatorImpl_closeDispatcher(this: IReplicator; status: IStatus); cdecl;
+begin
+	try
+		IReplicatorImpl(this).close(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IReplicatorImpl_vTable: ReplicatorVTable;
+
+constructor IReplicatorImpl.create;
+begin
+	vTable := IReplicatorImpl_vTable;
 end;
 
 procedure IRequestImpl_addRefDispatcher(this: IRequest); cdecl;
@@ -8557,7 +10898,7 @@ begin
 	end
 end;
 
-procedure IRequestImpl_receiveDispatcher(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); cdecl;
+procedure IRequestImpl_receiveDispatcher(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); cdecl;
 begin
 	try
 		IRequestImpl(this).receive(status, level, msgType, length, message);
@@ -8566,7 +10907,7 @@ begin
 	end
 end;
 
-procedure IRequestImpl_sendDispatcher(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); cdecl;
+procedure IRequestImpl_sendDispatcher(this: IRequest; status: IStatus; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); cdecl;
 begin
 	try
 		IRequestImpl(this).send(status, level, msgType, length, message);
@@ -8593,7 +10934,7 @@ begin
 	end
 end;
 
-procedure IRequestImpl_startAndSendDispatcher(this: IRequest; status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: BytePtr); cdecl;
+procedure IRequestImpl_startAndSendDispatcher(this: IRequest; status: IStatus; tra: ITransaction; level: Integer; msgType: Cardinal; length: Cardinal; message: Pointer); cdecl;
 begin
 	try
 		IRequestImpl(this).startAndSend(status, tra, level, msgType, length, message);
@@ -8606,6 +10947,15 @@ procedure IRequestImpl_unwindDispatcher(this: IRequest; status: IStatus; level: 
 begin
 	try
 		IRequestImpl(this).unwind(status, level);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IRequestImpl_deprecatedFreeDispatcher(this: IRequest; status: IStatus); cdecl;
+begin
+	try
+		IRequestImpl(this).deprecatedFree(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -8643,6 +10993,15 @@ begin
 		Result := IEventsImpl(this).release();
 	except
 		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IEventsImpl_deprecatedCancelDispatcher(this: IEvents; status: IStatus); cdecl;
+begin
+	try
+		IEventsImpl(this).deprecatedCancel(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
 	end
 end;
 
@@ -8825,6 +11184,78 @@ begin
 	end
 end;
 
+procedure IAttachmentImpl_deprecatedDetachDispatcher(this: IAttachment; status: IStatus); cdecl;
+begin
+	try
+		IAttachmentImpl(this).deprecatedDetach(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IAttachmentImpl_deprecatedDropDatabaseDispatcher(this: IAttachment; status: IStatus); cdecl;
+begin
+	try
+		IAttachmentImpl(this).deprecatedDropDatabase(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IAttachmentImpl_getIdleTimeoutDispatcher(this: IAttachment; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IAttachmentImpl(this).getIdleTimeout(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IAttachmentImpl_setIdleTimeoutDispatcher(this: IAttachment; status: IStatus; timeOut: Cardinal); cdecl;
+begin
+	try
+		IAttachmentImpl(this).setIdleTimeout(status, timeOut);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IAttachmentImpl_getStatementTimeoutDispatcher(this: IAttachment; status: IStatus): Cardinal; cdecl;
+begin
+	try
+		Result := IAttachmentImpl(this).getStatementTimeout(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IAttachmentImpl_setStatementTimeoutDispatcher(this: IAttachment; status: IStatus; timeOut: Cardinal); cdecl;
+begin
+	try
+		IAttachmentImpl(this).setStatementTimeout(status, timeOut);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IAttachmentImpl_createBatchDispatcher(this: IAttachment; status: IStatus; transaction: ITransaction; stmtLength: Cardinal; sqlStmt: PAnsiChar; dialect: Cardinal; inMetadata: IMessageMetadata; parLength: Cardinal; par: BytePtr): IBatch; cdecl;
+begin
+	try
+		Result := IAttachmentImpl(this).createBatch(status, transaction, stmtLength, sqlStmt, dialect, inMetadata, parLength, par);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IAttachmentImpl_createReplicatorDispatcher(this: IAttachment; status: IStatus): IReplicator; cdecl;
+begin
+	try
+		Result := IAttachmentImpl(this).createReplicator(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 procedure IAttachmentImpl_detachDispatcher(this: IAttachment; status: IStatus); cdecl;
 begin
 	try
@@ -8869,10 +11300,10 @@ begin
 	end
 end;
 
-procedure IServiceImpl_detachDispatcher(this: IService; status: IStatus); cdecl;
+procedure IServiceImpl_deprecatedDetachDispatcher(this: IService; status: IStatus); cdecl;
 begin
 	try
-		IServiceImpl(this).detach(status);
+		IServiceImpl(this).deprecatedDetach(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -8891,6 +11322,24 @@ procedure IServiceImpl_startDispatcher(this: IService; status: IStatus; spbLengt
 begin
 	try
 		IServiceImpl(this).start(status, spbLength, spb);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IServiceImpl_detachDispatcher(this: IService; status: IStatus); cdecl;
+begin
+	try
+		IServiceImpl(this).detach(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IServiceImpl_cancelDispatcher(this: IService; status: IStatus); cdecl;
+begin
+	try
+		IServiceImpl(this).cancel(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -9253,6 +11702,15 @@ function IClientBlockImpl_newKeyDispatcher(this: IClientBlock; status: IStatus):
 begin
 	try
 		Result := IClientBlockImpl(this).newKey(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IClientBlockImpl_getAuthBlockDispatcher(this: IClientBlock; status: IStatus): IAuthBlock; cdecl;
+begin
+	try
+		Result := IClientBlockImpl(this).getAuthBlock(status);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -9691,6 +12149,24 @@ begin
 	end
 end;
 
+function ILogonInfoImpl_attachmentDispatcher(this: ILogonInfo; status: IStatus): IAttachment; cdecl;
+begin
+	try
+		Result := ILogonInfoImpl(this).attachment(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function ILogonInfoImpl_transactionDispatcher(this: ILogonInfo; status: IStatus): ITransaction; cdecl;
+begin
+	try
+		Result := ILogonInfoImpl(this).transaction(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	ILogonInfoImpl_vTable: LogonInfoVTable;
 
@@ -9779,6 +12255,77 @@ begin
 	vTable := IManagementImpl_vTable;
 end;
 
+function IAuthBlockImpl_getTypeDispatcher(this: IAuthBlock): PAnsiChar; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).getType();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IAuthBlockImpl_getNameDispatcher(this: IAuthBlock): PAnsiChar; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).getName();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IAuthBlockImpl_getPluginDispatcher(this: IAuthBlock): PAnsiChar; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).getPlugin();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IAuthBlockImpl_getSecurityDbDispatcher(this: IAuthBlock): PAnsiChar; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).getSecurityDb();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IAuthBlockImpl_getOriginalPluginDispatcher(this: IAuthBlock): PAnsiChar; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).getOriginalPlugin();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IAuthBlockImpl_nextDispatcher(this: IAuthBlock; status: IStatus): Boolean; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).next(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IAuthBlockImpl_firstDispatcher(this: IAuthBlock; status: IStatus): Boolean; cdecl;
+begin
+	try
+		Result := IAuthBlockImpl(this).first(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IAuthBlockImpl_vTable: AuthBlockVTable;
+
+constructor IAuthBlockImpl.create;
+begin
+	vTable := IAuthBlockImpl_vTable;
+end;
+
 procedure IWireCryptPluginImpl_addRefDispatcher(this: IWireCryptPlugin); cdecl;
 begin
 	try
@@ -9846,6 +12393,24 @@ procedure IWireCryptPluginImpl_decryptDispatcher(this: IWireCryptPlugin; status:
 begin
 	try
 		IWireCryptPluginImpl(this).decrypt(status, length, from, to_);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IWireCryptPluginImpl_getSpecificDataDispatcher(this: IWireCryptPlugin; status: IStatus; keyType: PAnsiChar; length: CardinalPtr): BytePtr; cdecl;
+begin
+	try
+		Result := IWireCryptPluginImpl(this).getSpecificData(status, keyType, length);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IWireCryptPluginImpl_setSpecificDataDispatcher(this: IWireCryptPlugin; status: IStatus; keyType: PAnsiChar; length: Cardinal; data: BytePtr); cdecl;
+begin
+	try
+		IWireCryptPluginImpl(this).setSpecificData(status, keyType, length, data);
 	except
 		on e: Exception do FbException.catchException(status, e);
 	end
@@ -10682,6 +13247,87 @@ begin
 	end
 end;
 
+function IUtilImpl_getDecFloat16Dispatcher(this: IUtil; status: IStatus): IDecFloat16; cdecl;
+begin
+	try
+		Result := IUtilImpl(this).getDecFloat16(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IUtilImpl_getDecFloat34Dispatcher(this: IUtil; status: IStatus): IDecFloat34; cdecl;
+begin
+	try
+		Result := IUtilImpl(this).getDecFloat34(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IUtilImpl_decodeTimeTzDispatcher(this: IUtil; status: IStatus; timeTz: ISC_TIME_TZPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+begin
+	try
+		IUtilImpl(this).decodeTimeTz(status, timeTz, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IUtilImpl_decodeTimeStampTzDispatcher(this: IUtil; status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+begin
+	try
+		IUtilImpl(this).decodeTimeStampTz(status, timeStampTz, year, month, day, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IUtilImpl_encodeTimeTzDispatcher(this: IUtil; status: IStatus; timeTz: ISC_TIME_TZPtr; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar); cdecl;
+begin
+	try
+		IUtilImpl(this).encodeTimeTz(status, timeTz, hours, minutes, seconds, fractions, timeZone);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IUtilImpl_encodeTimeStampTzDispatcher(this: IUtil; status: IStatus; timeStampTz: ISC_TIMESTAMP_TZPtr; year: Cardinal; month: Cardinal; day: Cardinal; hours: Cardinal; minutes: Cardinal; seconds: Cardinal; fractions: Cardinal; timeZone: PAnsiChar); cdecl;
+begin
+	try
+		IUtilImpl(this).encodeTimeStampTz(status, timeStampTz, year, month, day, hours, minutes, seconds, fractions, timeZone);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IUtilImpl_getInt128Dispatcher(this: IUtil; status: IStatus): IInt128; cdecl;
+begin
+	try
+		Result := IUtilImpl(this).getInt128(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IUtilImpl_decodeTimeTzExDispatcher(this: IUtil; status: IStatus; timeTz: ISC_TIME_TZ_EXPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+begin
+	try
+		IUtilImpl(this).decodeTimeTzEx(status, timeTz, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IUtilImpl_decodeTimeStampTzExDispatcher(this: IUtil; status: IStatus; timeStampTz: ISC_TIMESTAMP_TZ_EXPtr; year: CardinalPtr; month: CardinalPtr; day: CardinalPtr; hours: CardinalPtr; minutes: CardinalPtr; seconds: CardinalPtr; fractions: CardinalPtr; timeZoneBufferLength: Cardinal; timeZoneBuffer: PAnsiChar); cdecl;
+begin
+	try
+		IUtilImpl(this).decodeTimeStampTzEx(status, timeStampTz, year, month, day, hours, minutes, seconds, fractions, timeZoneBufferLength, timeZoneBuffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	IUtilImpl_vTable: UtilVTable;
 
@@ -11140,6 +13786,24 @@ function ITraceTransactionImpl_getPerfDispatcher(this: ITraceTransaction): Perfo
 begin
 	try
 		Result := ITraceTransactionImpl(this).getPerf();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function ITraceTransactionImpl_getInitialIDDispatcher(this: ITraceTransaction): Int64; cdecl;
+begin
+	try
+		Result := ITraceTransactionImpl(this).getInitialID();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function ITraceTransactionImpl_getPreviousIDDispatcher(this: ITraceTransaction): Int64; cdecl;
+begin
+	try
+		Result := ITraceTransactionImpl(this).getPreviousID();
 	except
 		on e: Exception do FbException.catchException(nil, e);
 	end
@@ -11780,6 +14444,15 @@ begin
 	end
 end;
 
+function ITraceLogWriterImpl_write_sDispatcher(this: ITraceLogWriter; status: IStatus; buf: Pointer; size: Cardinal): Cardinal; cdecl;
+begin
+	try
+		Result := ITraceLogWriterImpl(this).write_s(status, buf, size);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
 var
 	ITraceLogWriterImpl_vTable: TraceLogWriterVTable;
 
@@ -12066,6 +14739,15 @@ begin
 	end
 end;
 
+function ITracePluginImpl_trace_dsql_restartDispatcher(this: ITracePlugin; connection: ITraceDatabaseConnection; transaction: ITraceTransaction; statement: ITraceSQLStatement; number: Cardinal): Boolean; cdecl;
+begin
+	try
+		Result := ITracePluginImpl(this).trace_dsql_restart(connection, transaction, statement, number);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
 var
 	ITracePluginImpl_vTable: TracePluginVTable;
 
@@ -12285,6 +14967,431 @@ begin
 	vTable := IUdrPluginImpl_vTable;
 end;
 
+procedure IDecFloat16Impl_toBcdDispatcher(this: IDecFloat16; from: FB_DEC16Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr); cdecl;
+begin
+	try
+		IDecFloat16Impl(this).toBcd(from, sign, bcd, exp);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IDecFloat16Impl_toStringDispatcher(this: IDecFloat16; status: IStatus; from: FB_DEC16Ptr; bufferLength: Cardinal; buffer: PAnsiChar); cdecl;
+begin
+	try
+		IDecFloat16Impl(this).toString(status, from, bufferLength, buffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IDecFloat16Impl_fromBcdDispatcher(this: IDecFloat16; sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC16Ptr); cdecl;
+begin
+	try
+		IDecFloat16Impl(this).fromBcd(sign, bcd, exp, to_);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IDecFloat16Impl_fromStringDispatcher(this: IDecFloat16; status: IStatus; from: PAnsiChar; to_: FB_DEC16Ptr); cdecl;
+begin
+	try
+		IDecFloat16Impl(this).fromString(status, from, to_);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IDecFloat16Impl_vTable: DecFloat16VTable;
+
+constructor IDecFloat16Impl.create;
+begin
+	vTable := IDecFloat16Impl_vTable;
+end;
+
+procedure IDecFloat34Impl_toBcdDispatcher(this: IDecFloat34; from: FB_DEC34Ptr; sign: IntegerPtr; bcd: BytePtr; exp: IntegerPtr); cdecl;
+begin
+	try
+		IDecFloat34Impl(this).toBcd(from, sign, bcd, exp);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IDecFloat34Impl_toStringDispatcher(this: IDecFloat34; status: IStatus; from: FB_DEC34Ptr; bufferLength: Cardinal; buffer: PAnsiChar); cdecl;
+begin
+	try
+		IDecFloat34Impl(this).toString(status, from, bufferLength, buffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IDecFloat34Impl_fromBcdDispatcher(this: IDecFloat34; sign: Integer; bcd: BytePtr; exp: Integer; to_: FB_DEC34Ptr); cdecl;
+begin
+	try
+		IDecFloat34Impl(this).fromBcd(sign, bcd, exp, to_);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IDecFloat34Impl_fromStringDispatcher(this: IDecFloat34; status: IStatus; from: PAnsiChar; to_: FB_DEC34Ptr); cdecl;
+begin
+	try
+		IDecFloat34Impl(this).fromString(status, from, to_);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IDecFloat34Impl_vTable: DecFloat34VTable;
+
+constructor IDecFloat34Impl.create;
+begin
+	vTable := IDecFloat34Impl_vTable;
+end;
+
+procedure IInt128Impl_toStringDispatcher(this: IInt128; status: IStatus; from: FB_I128Ptr; scale: Integer; bufferLength: Cardinal; buffer: PAnsiChar); cdecl;
+begin
+	try
+		IInt128Impl(this).toString(status, from, scale, bufferLength, buffer);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IInt128Impl_fromStringDispatcher(this: IInt128; status: IStatus; scale: Integer; from: PAnsiChar; to_: FB_I128Ptr); cdecl;
+begin
+	try
+		IInt128Impl(this).fromString(status, scale, from, to_);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IInt128Impl_vTable: Int128VTable;
+
+constructor IInt128Impl.create;
+begin
+	vTable := IInt128Impl_vTable;
+end;
+
+function IReplicatedFieldImpl_getNameDispatcher(this: IReplicatedField): PAnsiChar; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getName();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedFieldImpl_getTypeDispatcher(this: IReplicatedField): Cardinal; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getType();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedFieldImpl_getSubTypeDispatcher(this: IReplicatedField): Integer; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getSubType();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedFieldImpl_getScaleDispatcher(this: IReplicatedField): Integer; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getScale();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedFieldImpl_getLengthDispatcher(this: IReplicatedField): Cardinal; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getLength();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedFieldImpl_getCharSetDispatcher(this: IReplicatedField): Cardinal; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getCharSet();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedFieldImpl_getDataDispatcher(this: IReplicatedField): Pointer; cdecl;
+begin
+	try
+		Result := IReplicatedFieldImpl(this).getData();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+var
+	IReplicatedFieldImpl_vTable: ReplicatedFieldVTable;
+
+constructor IReplicatedFieldImpl.create;
+begin
+	vTable := IReplicatedFieldImpl_vTable;
+end;
+
+function IReplicatedRecordImpl_getCountDispatcher(this: IReplicatedRecord): Cardinal; cdecl;
+begin
+	try
+		Result := IReplicatedRecordImpl(this).getCount();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedRecordImpl_getFieldDispatcher(this: IReplicatedRecord; index: Cardinal): IReplicatedField; cdecl;
+begin
+	try
+		Result := IReplicatedRecordImpl(this).getField(index);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedRecordImpl_getRawLengthDispatcher(this: IReplicatedRecord): Cardinal; cdecl;
+begin
+	try
+		Result := IReplicatedRecordImpl(this).getRawLength();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedRecordImpl_getRawDataDispatcher(this: IReplicatedRecord): BytePtr; cdecl;
+begin
+	try
+		Result := IReplicatedRecordImpl(this).getRawData();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+var
+	IReplicatedRecordImpl_vTable: ReplicatedRecordVTable;
+
+constructor IReplicatedRecordImpl.create;
+begin
+	vTable := IReplicatedRecordImpl_vTable;
+end;
+
+procedure IReplicatedTransactionImpl_disposeDispatcher(this: IReplicatedTransaction); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).dispose();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_prepareDispatcher(this: IReplicatedTransaction; status: IStatus); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).prepare(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_commitDispatcher(this: IReplicatedTransaction; status: IStatus); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).commit(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_rollbackDispatcher(this: IReplicatedTransaction; status: IStatus); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).rollback(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_startSavepointDispatcher(this: IReplicatedTransaction; status: IStatus); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).startSavepoint(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_releaseSavepointDispatcher(this: IReplicatedTransaction; status: IStatus); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).releaseSavepoint(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_rollbackSavepointDispatcher(this: IReplicatedTransaction; status: IStatus); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).rollbackSavepoint(status);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_insertRecordDispatcher(this: IReplicatedTransaction; status: IStatus; name: PAnsiChar; record_: IReplicatedRecord); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).insertRecord(status, name, record_);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_updateRecordDispatcher(this: IReplicatedTransaction; status: IStatus; name: PAnsiChar; orgRecord: IReplicatedRecord; newRecord: IReplicatedRecord); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).updateRecord(status, name, orgRecord, newRecord);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_deleteRecordDispatcher(this: IReplicatedTransaction; status: IStatus; name: PAnsiChar; record_: IReplicatedRecord); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).deleteRecord(status, name, record_);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_executeSqlDispatcher(this: IReplicatedTransaction; status: IStatus; sql: PAnsiChar); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).executeSql(status, sql);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedTransactionImpl_executeSqlIntlDispatcher(this: IReplicatedTransaction; status: IStatus; charset: Cardinal; sql: PAnsiChar); cdecl;
+begin
+	try
+		IReplicatedTransactionImpl(this).executeSqlIntl(status, charset, sql);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IReplicatedTransactionImpl_vTable: ReplicatedTransactionVTable;
+
+constructor IReplicatedTransactionImpl.create;
+begin
+	vTable := IReplicatedTransactionImpl_vTable;
+end;
+
+procedure IReplicatedSessionImpl_addRefDispatcher(this: IReplicatedSession); cdecl;
+begin
+	try
+		IReplicatedSessionImpl(this).addRef();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedSessionImpl_releaseDispatcher(this: IReplicatedSession): Integer; cdecl;
+begin
+	try
+		Result := IReplicatedSessionImpl(this).release();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+procedure IReplicatedSessionImpl_setOwnerDispatcher(this: IReplicatedSession; r: IReferenceCounted); cdecl;
+begin
+	try
+		IReplicatedSessionImpl(this).setOwner(r);
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedSessionImpl_getOwnerDispatcher(this: IReplicatedSession): IReferenceCounted; cdecl;
+begin
+	try
+		Result := IReplicatedSessionImpl(this).getOwner();
+	except
+		on e: Exception do FbException.catchException(nil, e);
+	end
+end;
+
+function IReplicatedSessionImpl_initDispatcher(this: IReplicatedSession; status: IStatus; attachment: IAttachment): Boolean; cdecl;
+begin
+	try
+		Result := IReplicatedSessionImpl(this).init(status, attachment);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+function IReplicatedSessionImpl_startTransactionDispatcher(this: IReplicatedSession; status: IStatus; transaction: ITransaction; number: Int64): IReplicatedTransaction; cdecl;
+begin
+	try
+		Result := IReplicatedSessionImpl(this).startTransaction(status, transaction, number);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedSessionImpl_cleanupTransactionDispatcher(this: IReplicatedSession; status: IStatus; number: Int64); cdecl;
+begin
+	try
+		IReplicatedSessionImpl(this).cleanupTransaction(status, number);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+procedure IReplicatedSessionImpl_setSequenceDispatcher(this: IReplicatedSession; status: IStatus; name: PAnsiChar; value: Int64); cdecl;
+begin
+	try
+		IReplicatedSessionImpl(this).setSequence(status, name, value);
+	except
+		on e: Exception do FbException.catchException(status, e);
+	end
+end;
+
+var
+	IReplicatedSessionImpl_vTable: ReplicatedSessionVTable;
+
+constructor IReplicatedSessionImpl.create;
+begin
+	vTable := IReplicatedSessionImpl_vTable;
+end;
+
 constructor FbException.create(status: IStatus);
 begin
 	inherited Create('FbException');
@@ -12328,9 +15435,30 @@ begin
 		status.setErrors(@statusVector);
 	end
 end;
+
+class procedure FbException.setVersionError(status: IStatus; interfaceName: string;
+		currentVersion, expectedVersion: NativeInt);
+var
+	statusVector: array[0..8] of NativeIntPtr;
+	msg: AnsiString;
+begin
+	msg := interfaceName;
+
+	statusVector[0] := NativeIntPtr(isc_arg_gds);
+	statusVector[1] := NativeIntPtr(isc_interface_version_too_old);
+	statusVector[2] := NativeIntPtr(isc_arg_number);
+	statusVector[3] := NativeIntPtr(expectedVersion);
+	statusVector[4] := NativeIntPtr(isc_arg_number);
+	statusVector[5] := NativeIntPtr(currentVersion);
+	statusVector[6] := NativeIntPtr(isc_arg_string);
+	statusVector[7] := NativeIntPtr(PAnsiChar(msg));
+	statusVector[8] := NativeIntPtr(isc_arg_end);
+
+	status.setErrors(@statusVector);
+end;
 initialization
 	IVersionedImpl_vTable := VersionedVTable.create;
-	IVersionedImpl_vTable.version := 0;
+	IVersionedImpl_vTable.version := 1;
 
 	IReferenceCountedImpl_vTable := ReferenceCountedVTable.create;
 	IReferenceCountedImpl_vTable.version := 2;
@@ -12338,11 +15466,11 @@ initialization
 	IReferenceCountedImpl_vTable.release := @IReferenceCountedImpl_releaseDispatcher;
 
 	IDisposableImpl_vTable := DisposableVTable.create;
-	IDisposableImpl_vTable.version := 1;
+	IDisposableImpl_vTable.version := 2;
 	IDisposableImpl_vTable.dispose := @IDisposableImpl_disposeDispatcher;
 
 	IStatusImpl_vTable := StatusVTable.create;
-	IStatusImpl_vTable.version := 10;
+	IStatusImpl_vTable.version := 3;
 	IStatusImpl_vTable.dispose := @IStatusImpl_disposeDispatcher;
 	IStatusImpl_vTable.init := @IStatusImpl_initDispatcher;
 	IStatusImpl_vTable.getState := @IStatusImpl_getStateDispatcher;
@@ -12355,7 +15483,7 @@ initialization
 	IStatusImpl_vTable.clone := @IStatusImpl_cloneDispatcher;
 
 	IMasterImpl_vTable := MasterVTable.create;
-	IMasterImpl_vTable.version := 12;
+	IMasterImpl_vTable.version := 2;
 	IMasterImpl_vTable.getStatus := @IMasterImpl_getStatusDispatcher;
 	IMasterImpl_vTable.getDispatcher := @IMasterImpl_getDispatcherDispatcher;
 	IMasterImpl_vTable.getPluginManager := @IMasterImpl_getPluginManagerDispatcher;
@@ -12370,14 +15498,14 @@ initialization
 	IMasterImpl_vTable.getProcessExiting := @IMasterImpl_getProcessExitingDispatcher;
 
 	IPluginBaseImpl_vTable := PluginBaseVTable.create;
-	IPluginBaseImpl_vTable.version := 4;
+	IPluginBaseImpl_vTable.version := 3;
 	IPluginBaseImpl_vTable.addRef := @IPluginBaseImpl_addRefDispatcher;
 	IPluginBaseImpl_vTable.release := @IPluginBaseImpl_releaseDispatcher;
 	IPluginBaseImpl_vTable.setOwner := @IPluginBaseImpl_setOwnerDispatcher;
 	IPluginBaseImpl_vTable.getOwner := @IPluginBaseImpl_getOwnerDispatcher;
 
 	IPluginSetImpl_vTable := PluginSetVTable.create;
-	IPluginSetImpl_vTable.version := 7;
+	IPluginSetImpl_vTable.version := 3;
 	IPluginSetImpl_vTable.addRef := @IPluginSetImpl_addRefDispatcher;
 	IPluginSetImpl_vTable.release := @IPluginSetImpl_releaseDispatcher;
 	IPluginSetImpl_vTable.getName := @IPluginSetImpl_getNameDispatcher;
@@ -12387,7 +15515,7 @@ initialization
 	IPluginSetImpl_vTable.set_ := @IPluginSetImpl_set_Dispatcher;
 
 	IConfigEntryImpl_vTable := ConfigEntryVTable.create;
-	IConfigEntryImpl_vTable.version := 7;
+	IConfigEntryImpl_vTable.version := 3;
 	IConfigEntryImpl_vTable.addRef := @IConfigEntryImpl_addRefDispatcher;
 	IConfigEntryImpl_vTable.release := @IConfigEntryImpl_releaseDispatcher;
 	IConfigEntryImpl_vTable.getName := @IConfigEntryImpl_getNameDispatcher;
@@ -12397,7 +15525,7 @@ initialization
 	IConfigEntryImpl_vTable.getSubConfig := @IConfigEntryImpl_getSubConfigDispatcher;
 
 	IConfigImpl_vTable := ConfigVTable.create;
-	IConfigImpl_vTable.version := 5;
+	IConfigImpl_vTable.version := 3;
 	IConfigImpl_vTable.addRef := @IConfigImpl_addRefDispatcher;
 	IConfigImpl_vTable.release := @IConfigImpl_releaseDispatcher;
 	IConfigImpl_vTable.find := @IConfigImpl_findDispatcher;
@@ -12405,16 +15533,17 @@ initialization
 	IConfigImpl_vTable.findPos := @IConfigImpl_findPosDispatcher;
 
 	IFirebirdConfImpl_vTable := FirebirdConfVTable.create;
-	IFirebirdConfImpl_vTable.version := 6;
+	IFirebirdConfImpl_vTable.version := 4;
 	IFirebirdConfImpl_vTable.addRef := @IFirebirdConfImpl_addRefDispatcher;
 	IFirebirdConfImpl_vTable.release := @IFirebirdConfImpl_releaseDispatcher;
 	IFirebirdConfImpl_vTable.getKey := @IFirebirdConfImpl_getKeyDispatcher;
 	IFirebirdConfImpl_vTable.asInteger := @IFirebirdConfImpl_asIntegerDispatcher;
 	IFirebirdConfImpl_vTable.asString := @IFirebirdConfImpl_asStringDispatcher;
 	IFirebirdConfImpl_vTable.asBoolean := @IFirebirdConfImpl_asBooleanDispatcher;
+	IFirebirdConfImpl_vTable.getVersion := @IFirebirdConfImpl_getVersionDispatcher;
 
 	IPluginConfigImpl_vTable := PluginConfigVTable.create;
-	IPluginConfigImpl_vTable.version := 6;
+	IPluginConfigImpl_vTable.version := 3;
 	IPluginConfigImpl_vTable.addRef := @IPluginConfigImpl_addRefDispatcher;
 	IPluginConfigImpl_vTable.release := @IPluginConfigImpl_releaseDispatcher;
 	IPluginConfigImpl_vTable.getConfigFileName := @IPluginConfigImpl_getConfigFileNameDispatcher;
@@ -12423,16 +15552,16 @@ initialization
 	IPluginConfigImpl_vTable.setReleaseDelay := @IPluginConfigImpl_setReleaseDelayDispatcher;
 
 	IPluginFactoryImpl_vTable := PluginFactoryVTable.create;
-	IPluginFactoryImpl_vTable.version := 1;
+	IPluginFactoryImpl_vTable.version := 2;
 	IPluginFactoryImpl_vTable.createPlugin := @IPluginFactoryImpl_createPluginDispatcher;
 
 	IPluginModuleImpl_vTable := PluginModuleVTable.create;
-	IPluginModuleImpl_vTable.version := 2;
+	IPluginModuleImpl_vTable.version := 3;
 	IPluginModuleImpl_vTable.doClean := @IPluginModuleImpl_doCleanDispatcher;
 	IPluginModuleImpl_vTable.threadDetach := @IPluginModuleImpl_threadDetachDispatcher;
 
 	IPluginManagerImpl_vTable := PluginManagerVTable.create;
-	IPluginManagerImpl_vTable.version := 6;
+	IPluginManagerImpl_vTable.version := 2;
 	IPluginManagerImpl_vTable.registerPluginFactory := @IPluginManagerImpl_registerPluginFactoryDispatcher;
 	IPluginManagerImpl_vTable.registerModule := @IPluginManagerImpl_registerModuleDispatcher;
 	IPluginManagerImpl_vTable.unregisterModule := @IPluginManagerImpl_unregisterModuleDispatcher;
@@ -12441,20 +15570,21 @@ initialization
 	IPluginManagerImpl_vTable.releasePlugin := @IPluginManagerImpl_releasePluginDispatcher;
 
 	ICryptKeyImpl_vTable := CryptKeyVTable.create;
-	ICryptKeyImpl_vTable.version := 4;
+	ICryptKeyImpl_vTable.version := 2;
 	ICryptKeyImpl_vTable.setSymmetric := @ICryptKeyImpl_setSymmetricDispatcher;
 	ICryptKeyImpl_vTable.setAsymmetric := @ICryptKeyImpl_setAsymmetricDispatcher;
 	ICryptKeyImpl_vTable.getEncryptKey := @ICryptKeyImpl_getEncryptKeyDispatcher;
 	ICryptKeyImpl_vTable.getDecryptKey := @ICryptKeyImpl_getDecryptKeyDispatcher;
 
 	IConfigManagerImpl_vTable := ConfigManagerVTable.create;
-	IConfigManagerImpl_vTable.version := 6;
+	IConfigManagerImpl_vTable.version := 3;
 	IConfigManagerImpl_vTable.getDirectory := @IConfigManagerImpl_getDirectoryDispatcher;
 	IConfigManagerImpl_vTable.getFirebirdConf := @IConfigManagerImpl_getFirebirdConfDispatcher;
 	IConfigManagerImpl_vTable.getDatabaseConf := @IConfigManagerImpl_getDatabaseConfDispatcher;
 	IConfigManagerImpl_vTable.getPluginConfig := @IConfigManagerImpl_getPluginConfigDispatcher;
 	IConfigManagerImpl_vTable.getInstallDirectory := @IConfigManagerImpl_getInstallDirectoryDispatcher;
 	IConfigManagerImpl_vTable.getRootDirectory := @IConfigManagerImpl_getRootDirectoryDispatcher;
+	IConfigManagerImpl_vTable.getDefaultSecurityDb := @IConfigManagerImpl_getDefaultSecurityDbDispatcher;
 
 	IEventCallbackImpl_vTable := EventCallbackVTable.create;
 	IEventCallbackImpl_vTable.version := 3;
@@ -12463,33 +15593,38 @@ initialization
 	IEventCallbackImpl_vTable.eventCallbackFunction := @IEventCallbackImpl_eventCallbackFunctionDispatcher;
 
 	IBlobImpl_vTable := BlobVTable.create;
-	IBlobImpl_vTable.version := 8;
+	IBlobImpl_vTable.version := 4;
 	IBlobImpl_vTable.addRef := @IBlobImpl_addRefDispatcher;
 	IBlobImpl_vTable.release := @IBlobImpl_releaseDispatcher;
 	IBlobImpl_vTable.getInfo := @IBlobImpl_getInfoDispatcher;
 	IBlobImpl_vTable.getSegment := @IBlobImpl_getSegmentDispatcher;
 	IBlobImpl_vTable.putSegment := @IBlobImpl_putSegmentDispatcher;
+	IBlobImpl_vTable.deprecatedCancel := @IBlobImpl_deprecatedCancelDispatcher;
+	IBlobImpl_vTable.deprecatedClose := @IBlobImpl_deprecatedCloseDispatcher;
+	IBlobImpl_vTable.seek := @IBlobImpl_seekDispatcher;
 	IBlobImpl_vTable.cancel := @IBlobImpl_cancelDispatcher;
 	IBlobImpl_vTable.close := @IBlobImpl_closeDispatcher;
-	IBlobImpl_vTable.seek := @IBlobImpl_seekDispatcher;
 
 	ITransactionImpl_vTable := TransactionVTable.create;
-	ITransactionImpl_vTable.version := 12;
+	ITransactionImpl_vTable.version := 4;
 	ITransactionImpl_vTable.addRef := @ITransactionImpl_addRefDispatcher;
 	ITransactionImpl_vTable.release := @ITransactionImpl_releaseDispatcher;
 	ITransactionImpl_vTable.getInfo := @ITransactionImpl_getInfoDispatcher;
 	ITransactionImpl_vTable.prepare := @ITransactionImpl_prepareDispatcher;
-	ITransactionImpl_vTable.commit := @ITransactionImpl_commitDispatcher;
+	ITransactionImpl_vTable.deprecatedCommit := @ITransactionImpl_deprecatedCommitDispatcher;
 	ITransactionImpl_vTable.commitRetaining := @ITransactionImpl_commitRetainingDispatcher;
-	ITransactionImpl_vTable.rollback := @ITransactionImpl_rollbackDispatcher;
+	ITransactionImpl_vTable.deprecatedRollback := @ITransactionImpl_deprecatedRollbackDispatcher;
 	ITransactionImpl_vTable.rollbackRetaining := @ITransactionImpl_rollbackRetainingDispatcher;
-	ITransactionImpl_vTable.disconnect := @ITransactionImpl_disconnectDispatcher;
+	ITransactionImpl_vTable.deprecatedDisconnect := @ITransactionImpl_deprecatedDisconnectDispatcher;
 	ITransactionImpl_vTable.join := @ITransactionImpl_joinDispatcher;
 	ITransactionImpl_vTable.validate := @ITransactionImpl_validateDispatcher;
 	ITransactionImpl_vTable.enterDtc := @ITransactionImpl_enterDtcDispatcher;
+	ITransactionImpl_vTable.commit := @ITransactionImpl_commitDispatcher;
+	ITransactionImpl_vTable.rollback := @ITransactionImpl_rollbackDispatcher;
+	ITransactionImpl_vTable.disconnect := @ITransactionImpl_disconnectDispatcher;
 
 	IMessageMetadataImpl_vTable := MessageMetadataVTable.create;
-	IMessageMetadataImpl_vTable.version := 17;
+	IMessageMetadataImpl_vTable.version := 4;
 	IMessageMetadataImpl_vTable.addRef := @IMessageMetadataImpl_addRefDispatcher;
 	IMessageMetadataImpl_vTable.release := @IMessageMetadataImpl_releaseDispatcher;
 	IMessageMetadataImpl_vTable.getCount := @IMessageMetadataImpl_getCountDispatcher;
@@ -12507,9 +15642,11 @@ initialization
 	IMessageMetadataImpl_vTable.getNullOffset := @IMessageMetadataImpl_getNullOffsetDispatcher;
 	IMessageMetadataImpl_vTable.getBuilder := @IMessageMetadataImpl_getBuilderDispatcher;
 	IMessageMetadataImpl_vTable.getMessageLength := @IMessageMetadataImpl_getMessageLengthDispatcher;
+	IMessageMetadataImpl_vTable.getAlignment := @IMessageMetadataImpl_getAlignmentDispatcher;
+	IMessageMetadataImpl_vTable.getAlignedLength := @IMessageMetadataImpl_getAlignedLengthDispatcher;
 
 	IMetadataBuilderImpl_vTable := MetadataBuilderVTable.create;
-	IMetadataBuilderImpl_vTable.version := 12;
+	IMetadataBuilderImpl_vTable.version := 4;
 	IMetadataBuilderImpl_vTable.addRef := @IMetadataBuilderImpl_addRefDispatcher;
 	IMetadataBuilderImpl_vTable.release := @IMetadataBuilderImpl_releaseDispatcher;
 	IMetadataBuilderImpl_vTable.setType := @IMetadataBuilderImpl_setTypeDispatcher;
@@ -12522,9 +15659,13 @@ initialization
 	IMetadataBuilderImpl_vTable.remove := @IMetadataBuilderImpl_removeDispatcher;
 	IMetadataBuilderImpl_vTable.addField := @IMetadataBuilderImpl_addFieldDispatcher;
 	IMetadataBuilderImpl_vTable.getMetadata := @IMetadataBuilderImpl_getMetadataDispatcher;
+	IMetadataBuilderImpl_vTable.setField := @IMetadataBuilderImpl_setFieldDispatcher;
+	IMetadataBuilderImpl_vTable.setRelation := @IMetadataBuilderImpl_setRelationDispatcher;
+	IMetadataBuilderImpl_vTable.setOwner := @IMetadataBuilderImpl_setOwnerDispatcher;
+	IMetadataBuilderImpl_vTable.setAlias := @IMetadataBuilderImpl_setAliasDispatcher;
 
 	IResultSetImpl_vTable := ResultSetVTable.create;
-	IResultSetImpl_vTable.version := 13;
+	IResultSetImpl_vTable.version := 4;
 	IResultSetImpl_vTable.addRef := @IResultSetImpl_addRefDispatcher;
 	IResultSetImpl_vTable.release := @IResultSetImpl_releaseDispatcher;
 	IResultSetImpl_vTable.fetchNext := @IResultSetImpl_fetchNextDispatcher;
@@ -12536,11 +15677,12 @@ initialization
 	IResultSetImpl_vTable.isEof := @IResultSetImpl_isEofDispatcher;
 	IResultSetImpl_vTable.isBof := @IResultSetImpl_isBofDispatcher;
 	IResultSetImpl_vTable.getMetadata := @IResultSetImpl_getMetadataDispatcher;
-	IResultSetImpl_vTable.close := @IResultSetImpl_closeDispatcher;
+	IResultSetImpl_vTable.deprecatedClose := @IResultSetImpl_deprecatedCloseDispatcher;
 	IResultSetImpl_vTable.setDelayedOutputFormat := @IResultSetImpl_setDelayedOutputFormatDispatcher;
+	IResultSetImpl_vTable.close := @IResultSetImpl_closeDispatcher;
 
 	IStatementImpl_vTable := StatementVTable.create;
-	IStatementImpl_vTable.version := 13;
+	IStatementImpl_vTable.version := 5;
 	IStatementImpl_vTable.addRef := @IStatementImpl_addRefDispatcher;
 	IStatementImpl_vTable.release := @IStatementImpl_releaseDispatcher;
 	IStatementImpl_vTable.getInfo := @IStatementImpl_getInfoDispatcher;
@@ -12552,11 +15694,49 @@ initialization
 	IStatementImpl_vTable.execute := @IStatementImpl_executeDispatcher;
 	IStatementImpl_vTable.openCursor := @IStatementImpl_openCursorDispatcher;
 	IStatementImpl_vTable.setCursorName := @IStatementImpl_setCursorNameDispatcher;
-	IStatementImpl_vTable.free := @IStatementImpl_freeDispatcher;
+	IStatementImpl_vTable.deprecatedFree := @IStatementImpl_deprecatedFreeDispatcher;
 	IStatementImpl_vTable.getFlags := @IStatementImpl_getFlagsDispatcher;
+	IStatementImpl_vTable.getTimeout := @IStatementImpl_getTimeoutDispatcher;
+	IStatementImpl_vTable.setTimeout := @IStatementImpl_setTimeoutDispatcher;
+	IStatementImpl_vTable.createBatch := @IStatementImpl_createBatchDispatcher;
+	IStatementImpl_vTable.free := @IStatementImpl_freeDispatcher;
+
+	IBatchImpl_vTable := BatchVTable.create;
+	IBatchImpl_vTable.version := 4;
+	IBatchImpl_vTable.addRef := @IBatchImpl_addRefDispatcher;
+	IBatchImpl_vTable.release := @IBatchImpl_releaseDispatcher;
+	IBatchImpl_vTable.add := @IBatchImpl_addDispatcher;
+	IBatchImpl_vTable.addBlob := @IBatchImpl_addBlobDispatcher;
+	IBatchImpl_vTable.appendBlobData := @IBatchImpl_appendBlobDataDispatcher;
+	IBatchImpl_vTable.addBlobStream := @IBatchImpl_addBlobStreamDispatcher;
+	IBatchImpl_vTable.registerBlob := @IBatchImpl_registerBlobDispatcher;
+	IBatchImpl_vTable.execute := @IBatchImpl_executeDispatcher;
+	IBatchImpl_vTable.cancel := @IBatchImpl_cancelDispatcher;
+	IBatchImpl_vTable.getBlobAlignment := @IBatchImpl_getBlobAlignmentDispatcher;
+	IBatchImpl_vTable.getMetadata := @IBatchImpl_getMetadataDispatcher;
+	IBatchImpl_vTable.setDefaultBpb := @IBatchImpl_setDefaultBpbDispatcher;
+	IBatchImpl_vTable.deprecatedClose := @IBatchImpl_deprecatedCloseDispatcher;
+	IBatchImpl_vTable.close := @IBatchImpl_closeDispatcher;
+	IBatchImpl_vTable.getInfo := @IBatchImpl_getInfoDispatcher;
+
+	IBatchCompletionStateImpl_vTable := BatchCompletionStateVTable.create;
+	IBatchCompletionStateImpl_vTable.version := 3;
+	IBatchCompletionStateImpl_vTable.dispose := @IBatchCompletionStateImpl_disposeDispatcher;
+	IBatchCompletionStateImpl_vTable.getSize := @IBatchCompletionStateImpl_getSizeDispatcher;
+	IBatchCompletionStateImpl_vTable.getState := @IBatchCompletionStateImpl_getStateDispatcher;
+	IBatchCompletionStateImpl_vTable.findError := @IBatchCompletionStateImpl_findErrorDispatcher;
+	IBatchCompletionStateImpl_vTable.getStatus := @IBatchCompletionStateImpl_getStatusDispatcher;
+
+	IReplicatorImpl_vTable := ReplicatorVTable.create;
+	IReplicatorImpl_vTable.version := 4;
+	IReplicatorImpl_vTable.addRef := @IReplicatorImpl_addRefDispatcher;
+	IReplicatorImpl_vTable.release := @IReplicatorImpl_releaseDispatcher;
+	IReplicatorImpl_vTable.process := @IReplicatorImpl_processDispatcher;
+	IReplicatorImpl_vTable.deprecatedClose := @IReplicatorImpl_deprecatedCloseDispatcher;
+	IReplicatorImpl_vTable.close := @IReplicatorImpl_closeDispatcher;
 
 	IRequestImpl_vTable := RequestVTable.create;
-	IRequestImpl_vTable.version := 9;
+	IRequestImpl_vTable.version := 4;
 	IRequestImpl_vTable.addRef := @IRequestImpl_addRefDispatcher;
 	IRequestImpl_vTable.release := @IRequestImpl_releaseDispatcher;
 	IRequestImpl_vTable.receive := @IRequestImpl_receiveDispatcher;
@@ -12565,16 +15745,18 @@ initialization
 	IRequestImpl_vTable.start := @IRequestImpl_startDispatcher;
 	IRequestImpl_vTable.startAndSend := @IRequestImpl_startAndSendDispatcher;
 	IRequestImpl_vTable.unwind := @IRequestImpl_unwindDispatcher;
+	IRequestImpl_vTable.deprecatedFree := @IRequestImpl_deprecatedFreeDispatcher;
 	IRequestImpl_vTable.free := @IRequestImpl_freeDispatcher;
 
 	IEventsImpl_vTable := EventsVTable.create;
-	IEventsImpl_vTable.version := 3;
+	IEventsImpl_vTable.version := 4;
 	IEventsImpl_vTable.addRef := @IEventsImpl_addRefDispatcher;
 	IEventsImpl_vTable.release := @IEventsImpl_releaseDispatcher;
+	IEventsImpl_vTable.deprecatedCancel := @IEventsImpl_deprecatedCancelDispatcher;
 	IEventsImpl_vTable.cancel := @IEventsImpl_cancelDispatcher;
 
 	IAttachmentImpl_vTable := AttachmentVTable.create;
-	IAttachmentImpl_vTable.version := 20;
+	IAttachmentImpl_vTable.version := 5;
 	IAttachmentImpl_vTable.addRef := @IAttachmentImpl_addRefDispatcher;
 	IAttachmentImpl_vTable.release := @IAttachmentImpl_releaseDispatcher;
 	IAttachmentImpl_vTable.getInfo := @IAttachmentImpl_getInfoDispatcher;
@@ -12593,6 +15775,14 @@ initialization
 	IAttachmentImpl_vTable.queEvents := @IAttachmentImpl_queEventsDispatcher;
 	IAttachmentImpl_vTable.cancelOperation := @IAttachmentImpl_cancelOperationDispatcher;
 	IAttachmentImpl_vTable.ping := @IAttachmentImpl_pingDispatcher;
+	IAttachmentImpl_vTable.deprecatedDetach := @IAttachmentImpl_deprecatedDetachDispatcher;
+	IAttachmentImpl_vTable.deprecatedDropDatabase := @IAttachmentImpl_deprecatedDropDatabaseDispatcher;
+	IAttachmentImpl_vTable.getIdleTimeout := @IAttachmentImpl_getIdleTimeoutDispatcher;
+	IAttachmentImpl_vTable.setIdleTimeout := @IAttachmentImpl_setIdleTimeoutDispatcher;
+	IAttachmentImpl_vTable.getStatementTimeout := @IAttachmentImpl_getStatementTimeoutDispatcher;
+	IAttachmentImpl_vTable.setStatementTimeout := @IAttachmentImpl_setStatementTimeoutDispatcher;
+	IAttachmentImpl_vTable.createBatch := @IAttachmentImpl_createBatchDispatcher;
+	IAttachmentImpl_vTable.createReplicator := @IAttachmentImpl_createReplicatorDispatcher;
 	IAttachmentImpl_vTable.detach := @IAttachmentImpl_detachDispatcher;
 	IAttachmentImpl_vTable.dropDatabase := @IAttachmentImpl_dropDatabaseDispatcher;
 
@@ -12600,12 +15790,14 @@ initialization
 	IServiceImpl_vTable.version := 5;
 	IServiceImpl_vTable.addRef := @IServiceImpl_addRefDispatcher;
 	IServiceImpl_vTable.release := @IServiceImpl_releaseDispatcher;
-	IServiceImpl_vTable.detach := @IServiceImpl_detachDispatcher;
+	IServiceImpl_vTable.deprecatedDetach := @IServiceImpl_deprecatedDetachDispatcher;
 	IServiceImpl_vTable.query := @IServiceImpl_queryDispatcher;
 	IServiceImpl_vTable.start := @IServiceImpl_startDispatcher;
+	IServiceImpl_vTable.detach := @IServiceImpl_detachDispatcher;
+	IServiceImpl_vTable.cancel := @IServiceImpl_cancelDispatcher;
 
 	IProviderImpl_vTable := ProviderVTable.create;
-	IProviderImpl_vTable.version := 9;
+	IProviderImpl_vTable.version := 4;
 	IProviderImpl_vTable.addRef := @IProviderImpl_addRefDispatcher;
 	IProviderImpl_vTable.release := @IProviderImpl_releaseDispatcher;
 	IProviderImpl_vTable.setOwner := @IProviderImpl_setOwnerDispatcher;
@@ -12617,7 +15809,7 @@ initialization
 	IProviderImpl_vTable.setDbCryptCallback := @IProviderImpl_setDbCryptCallbackDispatcher;
 
 	IDtcStartImpl_vTable := DtcStartVTable.create;
-	IDtcStartImpl_vTable.version := 4;
+	IDtcStartImpl_vTable.version := 3;
 	IDtcStartImpl_vTable.dispose := @IDtcStartImpl_disposeDispatcher;
 	IDtcStartImpl_vTable.addAttachment := @IDtcStartImpl_addAttachmentDispatcher;
 	IDtcStartImpl_vTable.addWithTpb := @IDtcStartImpl_addWithTpbDispatcher;
@@ -12636,21 +15828,21 @@ initialization
 	IAuthImpl_vTable.getOwner := @IAuthImpl_getOwnerDispatcher;
 
 	IWriterImpl_vTable := WriterVTable.create;
-	IWriterImpl_vTable.version := 4;
+	IWriterImpl_vTable.version := 2;
 	IWriterImpl_vTable.reset := @IWriterImpl_resetDispatcher;
 	IWriterImpl_vTable.add := @IWriterImpl_addDispatcher;
 	IWriterImpl_vTable.setType := @IWriterImpl_setTypeDispatcher;
 	IWriterImpl_vTable.setDb := @IWriterImpl_setDbDispatcher;
 
 	IServerBlockImpl_vTable := ServerBlockVTable.create;
-	IServerBlockImpl_vTable.version := 4;
+	IServerBlockImpl_vTable.version := 2;
 	IServerBlockImpl_vTable.getLogin := @IServerBlockImpl_getLoginDispatcher;
 	IServerBlockImpl_vTable.getData := @IServerBlockImpl_getDataDispatcher;
 	IServerBlockImpl_vTable.putData := @IServerBlockImpl_putDataDispatcher;
 	IServerBlockImpl_vTable.newKey := @IServerBlockImpl_newKeyDispatcher;
 
 	IClientBlockImpl_vTable := ClientBlockVTable.create;
-	IClientBlockImpl_vTable.version := 7;
+	IClientBlockImpl_vTable.version := 4;
 	IClientBlockImpl_vTable.addRef := @IClientBlockImpl_addRefDispatcher;
 	IClientBlockImpl_vTable.release := @IClientBlockImpl_releaseDispatcher;
 	IClientBlockImpl_vTable.getLogin := @IClientBlockImpl_getLoginDispatcher;
@@ -12658,6 +15850,7 @@ initialization
 	IClientBlockImpl_vTable.getData := @IClientBlockImpl_getDataDispatcher;
 	IClientBlockImpl_vTable.putData := @IClientBlockImpl_putDataDispatcher;
 	IClientBlockImpl_vTable.newKey := @IClientBlockImpl_newKeyDispatcher;
+	IClientBlockImpl_vTable.getAuthBlock := @IClientBlockImpl_getAuthBlockDispatcher;
 
 	IServerImpl_vTable := ServerVTable.create;
 	IServerImpl_vTable.version := 6;
@@ -12677,13 +15870,13 @@ initialization
 	IClientImpl_vTable.authenticate := @IClientImpl_authenticateDispatcher;
 
 	IUserFieldImpl_vTable := UserFieldVTable.create;
-	IUserFieldImpl_vTable.version := 3;
+	IUserFieldImpl_vTable.version := 2;
 	IUserFieldImpl_vTable.entered := @IUserFieldImpl_enteredDispatcher;
 	IUserFieldImpl_vTable.specified := @IUserFieldImpl_specifiedDispatcher;
 	IUserFieldImpl_vTable.setEntered := @IUserFieldImpl_setEnteredDispatcher;
 
 	ICharUserFieldImpl_vTable := CharUserFieldVTable.create;
-	ICharUserFieldImpl_vTable.version := 5;
+	ICharUserFieldImpl_vTable.version := 3;
 	ICharUserFieldImpl_vTable.entered := @ICharUserFieldImpl_enteredDispatcher;
 	ICharUserFieldImpl_vTable.specified := @ICharUserFieldImpl_specifiedDispatcher;
 	ICharUserFieldImpl_vTable.setEntered := @ICharUserFieldImpl_setEnteredDispatcher;
@@ -12691,7 +15884,7 @@ initialization
 	ICharUserFieldImpl_vTable.set_ := @ICharUserFieldImpl_set_Dispatcher;
 
 	IIntUserFieldImpl_vTable := IntUserFieldVTable.create;
-	IIntUserFieldImpl_vTable.version := 5;
+	IIntUserFieldImpl_vTable.version := 3;
 	IIntUserFieldImpl_vTable.entered := @IIntUserFieldImpl_enteredDispatcher;
 	IIntUserFieldImpl_vTable.specified := @IIntUserFieldImpl_specifiedDispatcher;
 	IIntUserFieldImpl_vTable.setEntered := @IIntUserFieldImpl_setEnteredDispatcher;
@@ -12699,7 +15892,7 @@ initialization
 	IIntUserFieldImpl_vTable.set_ := @IIntUserFieldImpl_set_Dispatcher;
 
 	IUserImpl_vTable := UserVTable.create;
-	IUserImpl_vTable.version := 11;
+	IUserImpl_vTable.version := 2;
 	IUserImpl_vTable.operation := @IUserImpl_operationDispatcher;
 	IUserImpl_vTable.userName := @IUserImpl_userNameDispatcher;
 	IUserImpl_vTable.password := @IUserImpl_passwordDispatcher;
@@ -12713,19 +15906,21 @@ initialization
 	IUserImpl_vTable.clear := @IUserImpl_clearDispatcher;
 
 	IListUsersImpl_vTable := ListUsersVTable.create;
-	IListUsersImpl_vTable.version := 1;
+	IListUsersImpl_vTable.version := 2;
 	IListUsersImpl_vTable.list := @IListUsersImpl_listDispatcher;
 
 	ILogonInfoImpl_vTable := LogonInfoVTable.create;
-	ILogonInfoImpl_vTable.version := 5;
+	ILogonInfoImpl_vTable.version := 3;
 	ILogonInfoImpl_vTable.name := @ILogonInfoImpl_nameDispatcher;
 	ILogonInfoImpl_vTable.role := @ILogonInfoImpl_roleDispatcher;
 	ILogonInfoImpl_vTable.networkProtocol := @ILogonInfoImpl_networkProtocolDispatcher;
 	ILogonInfoImpl_vTable.remoteAddress := @ILogonInfoImpl_remoteAddressDispatcher;
 	ILogonInfoImpl_vTable.authBlock := @ILogonInfoImpl_authBlockDispatcher;
+	ILogonInfoImpl_vTable.attachment := @ILogonInfoImpl_attachmentDispatcher;
+	ILogonInfoImpl_vTable.transaction := @ILogonInfoImpl_transactionDispatcher;
 
 	IManagementImpl_vTable := ManagementVTable.create;
-	IManagementImpl_vTable.version := 8;
+	IManagementImpl_vTable.version := 4;
 	IManagementImpl_vTable.addRef := @IManagementImpl_addRefDispatcher;
 	IManagementImpl_vTable.release := @IManagementImpl_releaseDispatcher;
 	IManagementImpl_vTable.setOwner := @IManagementImpl_setOwnerDispatcher;
@@ -12735,8 +15930,18 @@ initialization
 	IManagementImpl_vTable.commit := @IManagementImpl_commitDispatcher;
 	IManagementImpl_vTable.rollback := @IManagementImpl_rollbackDispatcher;
 
+	IAuthBlockImpl_vTable := AuthBlockVTable.create;
+	IAuthBlockImpl_vTable.version := 2;
+	IAuthBlockImpl_vTable.getType := @IAuthBlockImpl_getTypeDispatcher;
+	IAuthBlockImpl_vTable.getName := @IAuthBlockImpl_getNameDispatcher;
+	IAuthBlockImpl_vTable.getPlugin := @IAuthBlockImpl_getPluginDispatcher;
+	IAuthBlockImpl_vTable.getSecurityDb := @IAuthBlockImpl_getSecurityDbDispatcher;
+	IAuthBlockImpl_vTable.getOriginalPlugin := @IAuthBlockImpl_getOriginalPluginDispatcher;
+	IAuthBlockImpl_vTable.next := @IAuthBlockImpl_nextDispatcher;
+	IAuthBlockImpl_vTable.first := @IAuthBlockImpl_firstDispatcher;
+
 	IWireCryptPluginImpl_vTable := WireCryptPluginVTable.create;
-	IWireCryptPluginImpl_vTable.version := 8;
+	IWireCryptPluginImpl_vTable.version := 5;
 	IWireCryptPluginImpl_vTable.addRef := @IWireCryptPluginImpl_addRefDispatcher;
 	IWireCryptPluginImpl_vTable.release := @IWireCryptPluginImpl_releaseDispatcher;
 	IWireCryptPluginImpl_vTable.setOwner := @IWireCryptPluginImpl_setOwnerDispatcher;
@@ -12745,13 +15950,15 @@ initialization
 	IWireCryptPluginImpl_vTable.setKey := @IWireCryptPluginImpl_setKeyDispatcher;
 	IWireCryptPluginImpl_vTable.encrypt := @IWireCryptPluginImpl_encryptDispatcher;
 	IWireCryptPluginImpl_vTable.decrypt := @IWireCryptPluginImpl_decryptDispatcher;
+	IWireCryptPluginImpl_vTable.getSpecificData := @IWireCryptPluginImpl_getSpecificDataDispatcher;
+	IWireCryptPluginImpl_vTable.setSpecificData := @IWireCryptPluginImpl_setSpecificDataDispatcher;
 
 	ICryptKeyCallbackImpl_vTable := CryptKeyCallbackVTable.create;
-	ICryptKeyCallbackImpl_vTable.version := 1;
+	ICryptKeyCallbackImpl_vTable.version := 2;
 	ICryptKeyCallbackImpl_vTable.callback := @ICryptKeyCallbackImpl_callbackDispatcher;
 
 	IKeyHolderPluginImpl_vTable := KeyHolderPluginVTable.create;
-	IKeyHolderPluginImpl_vTable.version := 8;
+	IKeyHolderPluginImpl_vTable.version := 5;
 	IKeyHolderPluginImpl_vTable.addRef := @IKeyHolderPluginImpl_addRefDispatcher;
 	IKeyHolderPluginImpl_vTable.release := @IKeyHolderPluginImpl_releaseDispatcher;
 	IKeyHolderPluginImpl_vTable.setOwner := @IKeyHolderPluginImpl_setOwnerDispatcher;
@@ -12768,7 +15975,7 @@ initialization
 	IDbCryptInfoImpl_vTable.getDatabaseFullPath := @IDbCryptInfoImpl_getDatabaseFullPathDispatcher;
 
 	IDbCryptPluginImpl_vTable := DbCryptPluginVTable.create;
-	IDbCryptPluginImpl_vTable.version := 8;
+	IDbCryptPluginImpl_vTable.version := 5;
 	IDbCryptPluginImpl_vTable.addRef := @IDbCryptPluginImpl_addRefDispatcher;
 	IDbCryptPluginImpl_vTable.release := @IDbCryptPluginImpl_releaseDispatcher;
 	IDbCryptPluginImpl_vTable.setOwner := @IDbCryptPluginImpl_setOwnerDispatcher;
@@ -12779,7 +15986,7 @@ initialization
 	IDbCryptPluginImpl_vTable.setInfo := @IDbCryptPluginImpl_setInfoDispatcher;
 
 	IExternalContextImpl_vTable := ExternalContextVTable.create;
-	IExternalContextImpl_vTable.version := 10;
+	IExternalContextImpl_vTable.version := 2;
 	IExternalContextImpl_vTable.getMaster := @IExternalContextImpl_getMasterDispatcher;
 	IExternalContextImpl_vTable.getEngine := @IExternalContextImpl_getEngineDispatcher;
 	IExternalContextImpl_vTable.getAttachment := @IExternalContextImpl_getAttachmentDispatcher;
@@ -12792,7 +15999,7 @@ initialization
 	IExternalContextImpl_vTable.setInfo := @IExternalContextImpl_setInfoDispatcher;
 
 	IExternalResultSetImpl_vTable := ExternalResultSetVTable.create;
-	IExternalResultSetImpl_vTable.version := 2;
+	IExternalResultSetImpl_vTable.version := 3;
 	IExternalResultSetImpl_vTable.dispose := @IExternalResultSetImpl_disposeDispatcher;
 	IExternalResultSetImpl_vTable.fetch := @IExternalResultSetImpl_fetchDispatcher;
 
@@ -12815,7 +16022,7 @@ initialization
 	IExternalTriggerImpl_vTable.execute := @IExternalTriggerImpl_executeDispatcher;
 
 	IRoutineMetadataImpl_vTable := RoutineMetadataVTable.create;
-	IRoutineMetadataImpl_vTable.version := 9;
+	IRoutineMetadataImpl_vTable.version := 2;
 	IRoutineMetadataImpl_vTable.getPackage := @IRoutineMetadataImpl_getPackageDispatcher;
 	IRoutineMetadataImpl_vTable.getName := @IRoutineMetadataImpl_getNameDispatcher;
 	IRoutineMetadataImpl_vTable.getEntryPoint := @IRoutineMetadataImpl_getEntryPointDispatcher;
@@ -12827,7 +16034,7 @@ initialization
 	IRoutineMetadataImpl_vTable.getTriggerType := @IRoutineMetadataImpl_getTriggerTypeDispatcher;
 
 	IExternalEngineImpl_vTable := ExternalEngineVTable.create;
-	IExternalEngineImpl_vTable.version := 10;
+	IExternalEngineImpl_vTable.version := 4;
 	IExternalEngineImpl_vTable.addRef := @IExternalEngineImpl_addRefDispatcher;
 	IExternalEngineImpl_vTable.release := @IExternalEngineImpl_releaseDispatcher;
 	IExternalEngineImpl_vTable.setOwner := @IExternalEngineImpl_setOwnerDispatcher;
@@ -12851,11 +16058,11 @@ initialization
 	ITimerControlImpl_vTable.stop := @ITimerControlImpl_stopDispatcher;
 
 	IVersionCallbackImpl_vTable := VersionCallbackVTable.create;
-	IVersionCallbackImpl_vTable.version := 1;
+	IVersionCallbackImpl_vTable.version := 2;
 	IVersionCallbackImpl_vTable.callback := @IVersionCallbackImpl_callbackDispatcher;
 
 	IUtilImpl_vTable := UtilVTable.create;
-	IUtilImpl_vTable.version := 13;
+	IUtilImpl_vTable.version := 4;
 	IUtilImpl_vTable.getFbVersion := @IUtilImpl_getFbVersionDispatcher;
 	IUtilImpl_vTable.loadBlob := @IUtilImpl_loadBlobDispatcher;
 	IUtilImpl_vTable.dumpBlob := @IUtilImpl_dumpBlobDispatcher;
@@ -12869,13 +16076,22 @@ initialization
 	IUtilImpl_vTable.getClientVersion := @IUtilImpl_getClientVersionDispatcher;
 	IUtilImpl_vTable.getXpbBuilder := @IUtilImpl_getXpbBuilderDispatcher;
 	IUtilImpl_vTable.setOffsets := @IUtilImpl_setOffsetsDispatcher;
+	IUtilImpl_vTable.getDecFloat16 := @IUtilImpl_getDecFloat16Dispatcher;
+	IUtilImpl_vTable.getDecFloat34 := @IUtilImpl_getDecFloat34Dispatcher;
+	IUtilImpl_vTable.decodeTimeTz := @IUtilImpl_decodeTimeTzDispatcher;
+	IUtilImpl_vTable.decodeTimeStampTz := @IUtilImpl_decodeTimeStampTzDispatcher;
+	IUtilImpl_vTable.encodeTimeTz := @IUtilImpl_encodeTimeTzDispatcher;
+	IUtilImpl_vTable.encodeTimeStampTz := @IUtilImpl_encodeTimeStampTzDispatcher;
+	IUtilImpl_vTable.getInt128 := @IUtilImpl_getInt128Dispatcher;
+	IUtilImpl_vTable.decodeTimeTzEx := @IUtilImpl_decodeTimeTzExDispatcher;
+	IUtilImpl_vTable.decodeTimeStampTzEx := @IUtilImpl_decodeTimeStampTzExDispatcher;
 
 	IOffsetsCallbackImpl_vTable := OffsetsCallbackVTable.create;
-	IOffsetsCallbackImpl_vTable.version := 1;
+	IOffsetsCallbackImpl_vTable.version := 2;
 	IOffsetsCallbackImpl_vTable.setOffset := @IOffsetsCallbackImpl_setOffsetDispatcher;
 
 	IXpbBuilderImpl_vTable := XpbBuilderVTable.create;
-	IXpbBuilderImpl_vTable.version := 21;
+	IXpbBuilderImpl_vTable.version := 3;
 	IXpbBuilderImpl_vTable.dispose := @IXpbBuilderImpl_disposeDispatcher;
 	IXpbBuilderImpl_vTable.clear := @IXpbBuilderImpl_clearDispatcher;
 	IXpbBuilderImpl_vTable.removeCurrent := @IXpbBuilderImpl_removeCurrentDispatcher;
@@ -12899,7 +16115,7 @@ initialization
 	IXpbBuilderImpl_vTable.getBuffer := @IXpbBuilderImpl_getBufferDispatcher;
 
 	ITraceConnectionImpl_vTable := TraceConnectionVTable.create;
-	ITraceConnectionImpl_vTable.version := 9;
+	ITraceConnectionImpl_vTable.version := 2;
 	ITraceConnectionImpl_vTable.getKind := @ITraceConnectionImpl_getKindDispatcher;
 	ITraceConnectionImpl_vTable.getProcessID := @ITraceConnectionImpl_getProcessIDDispatcher;
 	ITraceConnectionImpl_vTable.getUserName := @ITraceConnectionImpl_getUserNameDispatcher;
@@ -12911,7 +16127,7 @@ initialization
 	ITraceConnectionImpl_vTable.getRemoteProcessName := @ITraceConnectionImpl_getRemoteProcessNameDispatcher;
 
 	ITraceDatabaseConnectionImpl_vTable := TraceDatabaseConnectionVTable.create;
-	ITraceDatabaseConnectionImpl_vTable.version := 11;
+	ITraceDatabaseConnectionImpl_vTable.version := 3;
 	ITraceDatabaseConnectionImpl_vTable.getKind := @ITraceDatabaseConnectionImpl_getKindDispatcher;
 	ITraceDatabaseConnectionImpl_vTable.getProcessID := @ITraceDatabaseConnectionImpl_getProcessIDDispatcher;
 	ITraceDatabaseConnectionImpl_vTable.getUserName := @ITraceDatabaseConnectionImpl_getUserNameDispatcher;
@@ -12925,12 +16141,14 @@ initialization
 	ITraceDatabaseConnectionImpl_vTable.getDatabaseName := @ITraceDatabaseConnectionImpl_getDatabaseNameDispatcher;
 
 	ITraceTransactionImpl_vTable := TraceTransactionVTable.create;
-	ITraceTransactionImpl_vTable.version := 5;
+	ITraceTransactionImpl_vTable.version := 3;
 	ITraceTransactionImpl_vTable.getTransactionID := @ITraceTransactionImpl_getTransactionIDDispatcher;
 	ITraceTransactionImpl_vTable.getReadOnly := @ITraceTransactionImpl_getReadOnlyDispatcher;
 	ITraceTransactionImpl_vTable.getWait := @ITraceTransactionImpl_getWaitDispatcher;
 	ITraceTransactionImpl_vTable.getIsolation := @ITraceTransactionImpl_getIsolationDispatcher;
 	ITraceTransactionImpl_vTable.getPerf := @ITraceTransactionImpl_getPerfDispatcher;
+	ITraceTransactionImpl_vTable.getInitialID := @ITraceTransactionImpl_getInitialIDDispatcher;
+	ITraceTransactionImpl_vTable.getPreviousID := @ITraceTransactionImpl_getPreviousIDDispatcher;
 
 	ITraceParamsImpl_vTable := TraceParamsVTable.create;
 	ITraceParamsImpl_vTable.version := 3;
@@ -12944,7 +16162,7 @@ initialization
 	ITraceStatementImpl_vTable.getPerf := @ITraceStatementImpl_getPerfDispatcher;
 
 	ITraceSQLStatementImpl_vTable := TraceSQLStatementVTable.create;
-	ITraceSQLStatementImpl_vTable.version := 7;
+	ITraceSQLStatementImpl_vTable.version := 3;
 	ITraceSQLStatementImpl_vTable.getStmtID := @ITraceSQLStatementImpl_getStmtIDDispatcher;
 	ITraceSQLStatementImpl_vTable.getPerf := @ITraceSQLStatementImpl_getPerfDispatcher;
 	ITraceSQLStatementImpl_vTable.getText := @ITraceSQLStatementImpl_getTextDispatcher;
@@ -12954,7 +16172,7 @@ initialization
 	ITraceSQLStatementImpl_vTable.getExplainedPlan := @ITraceSQLStatementImpl_getExplainedPlanDispatcher;
 
 	ITraceBLRStatementImpl_vTable := TraceBLRStatementVTable.create;
-	ITraceBLRStatementImpl_vTable.version := 5;
+	ITraceBLRStatementImpl_vTable.version := 3;
 	ITraceBLRStatementImpl_vTable.getStmtID := @ITraceBLRStatementImpl_getStmtIDDispatcher;
 	ITraceBLRStatementImpl_vTable.getPerf := @ITraceBLRStatementImpl_getPerfDispatcher;
 	ITraceBLRStatementImpl_vTable.getData := @ITraceBLRStatementImpl_getDataDispatcher;
@@ -12962,32 +16180,32 @@ initialization
 	ITraceBLRStatementImpl_vTable.getText := @ITraceBLRStatementImpl_getTextDispatcher;
 
 	ITraceDYNRequestImpl_vTable := TraceDYNRequestVTable.create;
-	ITraceDYNRequestImpl_vTable.version := 3;
+	ITraceDYNRequestImpl_vTable.version := 2;
 	ITraceDYNRequestImpl_vTable.getData := @ITraceDYNRequestImpl_getDataDispatcher;
 	ITraceDYNRequestImpl_vTable.getDataLength := @ITraceDYNRequestImpl_getDataLengthDispatcher;
 	ITraceDYNRequestImpl_vTable.getText := @ITraceDYNRequestImpl_getTextDispatcher;
 
 	ITraceContextVariableImpl_vTable := TraceContextVariableVTable.create;
-	ITraceContextVariableImpl_vTable.version := 3;
+	ITraceContextVariableImpl_vTable.version := 2;
 	ITraceContextVariableImpl_vTable.getNameSpace := @ITraceContextVariableImpl_getNameSpaceDispatcher;
 	ITraceContextVariableImpl_vTable.getVarName := @ITraceContextVariableImpl_getVarNameDispatcher;
 	ITraceContextVariableImpl_vTable.getVarValue := @ITraceContextVariableImpl_getVarValueDispatcher;
 
 	ITraceProcedureImpl_vTable := TraceProcedureVTable.create;
-	ITraceProcedureImpl_vTable.version := 3;
+	ITraceProcedureImpl_vTable.version := 2;
 	ITraceProcedureImpl_vTable.getProcName := @ITraceProcedureImpl_getProcNameDispatcher;
 	ITraceProcedureImpl_vTable.getInputs := @ITraceProcedureImpl_getInputsDispatcher;
 	ITraceProcedureImpl_vTable.getPerf := @ITraceProcedureImpl_getPerfDispatcher;
 
 	ITraceFunctionImpl_vTable := TraceFunctionVTable.create;
-	ITraceFunctionImpl_vTable.version := 4;
+	ITraceFunctionImpl_vTable.version := 2;
 	ITraceFunctionImpl_vTable.getFuncName := @ITraceFunctionImpl_getFuncNameDispatcher;
 	ITraceFunctionImpl_vTable.getInputs := @ITraceFunctionImpl_getInputsDispatcher;
 	ITraceFunctionImpl_vTable.getResult := @ITraceFunctionImpl_getResultDispatcher;
 	ITraceFunctionImpl_vTable.getPerf := @ITraceFunctionImpl_getPerfDispatcher;
 
 	ITraceTriggerImpl_vTable := TraceTriggerVTable.create;
-	ITraceTriggerImpl_vTable.version := 5;
+	ITraceTriggerImpl_vTable.version := 2;
 	ITraceTriggerImpl_vTable.getTriggerName := @ITraceTriggerImpl_getTriggerNameDispatcher;
 	ITraceTriggerImpl_vTable.getRelationName := @ITraceTriggerImpl_getRelationNameDispatcher;
 	ITraceTriggerImpl_vTable.getAction := @ITraceTriggerImpl_getActionDispatcher;
@@ -12995,7 +16213,7 @@ initialization
 	ITraceTriggerImpl_vTable.getPerf := @ITraceTriggerImpl_getPerfDispatcher;
 
 	ITraceServiceConnectionImpl_vTable := TraceServiceConnectionVTable.create;
-	ITraceServiceConnectionImpl_vTable.version := 12;
+	ITraceServiceConnectionImpl_vTable.version := 3;
 	ITraceServiceConnectionImpl_vTable.getKind := @ITraceServiceConnectionImpl_getKindDispatcher;
 	ITraceServiceConnectionImpl_vTable.getProcessID := @ITraceServiceConnectionImpl_getProcessIDDispatcher;
 	ITraceServiceConnectionImpl_vTable.getUserName := @ITraceServiceConnectionImpl_getUserNameDispatcher;
@@ -13010,14 +16228,14 @@ initialization
 	ITraceServiceConnectionImpl_vTable.getServiceName := @ITraceServiceConnectionImpl_getServiceNameDispatcher;
 
 	ITraceStatusVectorImpl_vTable := TraceStatusVectorVTable.create;
-	ITraceStatusVectorImpl_vTable.version := 4;
+	ITraceStatusVectorImpl_vTable.version := 2;
 	ITraceStatusVectorImpl_vTable.hasError := @ITraceStatusVectorImpl_hasErrorDispatcher;
 	ITraceStatusVectorImpl_vTable.hasWarning := @ITraceStatusVectorImpl_hasWarningDispatcher;
 	ITraceStatusVectorImpl_vTable.getStatus := @ITraceStatusVectorImpl_getStatusDispatcher;
 	ITraceStatusVectorImpl_vTable.getText := @ITraceStatusVectorImpl_getTextDispatcher;
 
 	ITraceSweepInfoImpl_vTable := TraceSweepInfoVTable.create;
-	ITraceSweepInfoImpl_vTable.version := 5;
+	ITraceSweepInfoImpl_vTable.version := 2;
 	ITraceSweepInfoImpl_vTable.getOIT := @ITraceSweepInfoImpl_getOITDispatcher;
 	ITraceSweepInfoImpl_vTable.getOST := @ITraceSweepInfoImpl_getOSTDispatcher;
 	ITraceSweepInfoImpl_vTable.getOAT := @ITraceSweepInfoImpl_getOATDispatcher;
@@ -13025,13 +16243,14 @@ initialization
 	ITraceSweepInfoImpl_vTable.getPerf := @ITraceSweepInfoImpl_getPerfDispatcher;
 
 	ITraceLogWriterImpl_vTable := TraceLogWriterVTable.create;
-	ITraceLogWriterImpl_vTable.version := 3;
+	ITraceLogWriterImpl_vTable.version := 4;
 	ITraceLogWriterImpl_vTable.addRef := @ITraceLogWriterImpl_addRefDispatcher;
 	ITraceLogWriterImpl_vTable.release := @ITraceLogWriterImpl_releaseDispatcher;
 	ITraceLogWriterImpl_vTable.write := @ITraceLogWriterImpl_writeDispatcher;
+	ITraceLogWriterImpl_vTable.write_s := @ITraceLogWriterImpl_write_sDispatcher;
 
 	ITraceInitInfoImpl_vTable := TraceInitInfoVTable.create;
-	ITraceInitInfoImpl_vTable.version := 7;
+	ITraceInitInfoImpl_vTable.version := 2;
 	ITraceInitInfoImpl_vTable.getConfigText := @ITraceInitInfoImpl_getConfigTextDispatcher;
 	ITraceInitInfoImpl_vTable.getTraceSessionID := @ITraceInitInfoImpl_getTraceSessionIDDispatcher;
 	ITraceInitInfoImpl_vTable.getTraceSessionName := @ITraceInitInfoImpl_getTraceSessionNameDispatcher;
@@ -13041,7 +16260,7 @@ initialization
 	ITraceInitInfoImpl_vTable.getLogWriter := @ITraceInitInfoImpl_getLogWriterDispatcher;
 
 	ITracePluginImpl_vTable := TracePluginVTable.create;
-	ITracePluginImpl_vTable.version := 23;
+	ITracePluginImpl_vTable.version := 4;
 	ITracePluginImpl_vTable.addRef := @ITracePluginImpl_addRefDispatcher;
 	ITracePluginImpl_vTable.release := @ITracePluginImpl_releaseDispatcher;
 	ITracePluginImpl_vTable.trace_get_error := @ITracePluginImpl_trace_get_errorDispatcher;
@@ -13065,9 +16284,10 @@ initialization
 	ITracePluginImpl_vTable.trace_event_error := @ITracePluginImpl_trace_event_errorDispatcher;
 	ITracePluginImpl_vTable.trace_event_sweep := @ITracePluginImpl_trace_event_sweepDispatcher;
 	ITracePluginImpl_vTable.trace_func_execute := @ITracePluginImpl_trace_func_executeDispatcher;
+	ITracePluginImpl_vTable.trace_dsql_restart := @ITracePluginImpl_trace_dsql_restartDispatcher;
 
 	ITraceFactoryImpl_vTable := TraceFactoryVTable.create;
-	ITraceFactoryImpl_vTable.version := 6;
+	ITraceFactoryImpl_vTable.version := 4;
 	ITraceFactoryImpl_vTable.addRef := @ITraceFactoryImpl_addRefDispatcher;
 	ITraceFactoryImpl_vTable.release := @ITraceFactoryImpl_releaseDispatcher;
 	ITraceFactoryImpl_vTable.setOwner := @ITraceFactoryImpl_setOwnerDispatcher;
@@ -13094,11 +16314,73 @@ initialization
 	IUdrTriggerFactoryImpl_vTable.newItem := @IUdrTriggerFactoryImpl_newItemDispatcher;
 
 	IUdrPluginImpl_vTable := UdrPluginVTable.create;
-	IUdrPluginImpl_vTable.version := 4;
+	IUdrPluginImpl_vTable.version := 2;
 	IUdrPluginImpl_vTable.getMaster := @IUdrPluginImpl_getMasterDispatcher;
 	IUdrPluginImpl_vTable.registerFunction := @IUdrPluginImpl_registerFunctionDispatcher;
 	IUdrPluginImpl_vTable.registerProcedure := @IUdrPluginImpl_registerProcedureDispatcher;
 	IUdrPluginImpl_vTable.registerTrigger := @IUdrPluginImpl_registerTriggerDispatcher;
+
+	IDecFloat16Impl_vTable := DecFloat16VTable.create;
+	IDecFloat16Impl_vTable.version := 2;
+	IDecFloat16Impl_vTable.toBcd := @IDecFloat16Impl_toBcdDispatcher;
+	IDecFloat16Impl_vTable.toString := @IDecFloat16Impl_toStringDispatcher;
+	IDecFloat16Impl_vTable.fromBcd := @IDecFloat16Impl_fromBcdDispatcher;
+	IDecFloat16Impl_vTable.fromString := @IDecFloat16Impl_fromStringDispatcher;
+
+	IDecFloat34Impl_vTable := DecFloat34VTable.create;
+	IDecFloat34Impl_vTable.version := 2;
+	IDecFloat34Impl_vTable.toBcd := @IDecFloat34Impl_toBcdDispatcher;
+	IDecFloat34Impl_vTable.toString := @IDecFloat34Impl_toStringDispatcher;
+	IDecFloat34Impl_vTable.fromBcd := @IDecFloat34Impl_fromBcdDispatcher;
+	IDecFloat34Impl_vTable.fromString := @IDecFloat34Impl_fromStringDispatcher;
+
+	IInt128Impl_vTable := Int128VTable.create;
+	IInt128Impl_vTable.version := 2;
+	IInt128Impl_vTable.toString := @IInt128Impl_toStringDispatcher;
+	IInt128Impl_vTable.fromString := @IInt128Impl_fromStringDispatcher;
+
+	IReplicatedFieldImpl_vTable := ReplicatedFieldVTable.create;
+	IReplicatedFieldImpl_vTable.version := 2;
+	IReplicatedFieldImpl_vTable.getName := @IReplicatedFieldImpl_getNameDispatcher;
+	IReplicatedFieldImpl_vTable.getType := @IReplicatedFieldImpl_getTypeDispatcher;
+	IReplicatedFieldImpl_vTable.getSubType := @IReplicatedFieldImpl_getSubTypeDispatcher;
+	IReplicatedFieldImpl_vTable.getScale := @IReplicatedFieldImpl_getScaleDispatcher;
+	IReplicatedFieldImpl_vTable.getLength := @IReplicatedFieldImpl_getLengthDispatcher;
+	IReplicatedFieldImpl_vTable.getCharSet := @IReplicatedFieldImpl_getCharSetDispatcher;
+	IReplicatedFieldImpl_vTable.getData := @IReplicatedFieldImpl_getDataDispatcher;
+
+	IReplicatedRecordImpl_vTable := ReplicatedRecordVTable.create;
+	IReplicatedRecordImpl_vTable.version := 2;
+	IReplicatedRecordImpl_vTable.getCount := @IReplicatedRecordImpl_getCountDispatcher;
+	IReplicatedRecordImpl_vTable.getField := @IReplicatedRecordImpl_getFieldDispatcher;
+	IReplicatedRecordImpl_vTable.getRawLength := @IReplicatedRecordImpl_getRawLengthDispatcher;
+	IReplicatedRecordImpl_vTable.getRawData := @IReplicatedRecordImpl_getRawDataDispatcher;
+
+	IReplicatedTransactionImpl_vTable := ReplicatedTransactionVTable.create;
+	IReplicatedTransactionImpl_vTable.version := 3;
+	IReplicatedTransactionImpl_vTable.dispose := @IReplicatedTransactionImpl_disposeDispatcher;
+	IReplicatedTransactionImpl_vTable.prepare := @IReplicatedTransactionImpl_prepareDispatcher;
+	IReplicatedTransactionImpl_vTable.commit := @IReplicatedTransactionImpl_commitDispatcher;
+	IReplicatedTransactionImpl_vTable.rollback := @IReplicatedTransactionImpl_rollbackDispatcher;
+	IReplicatedTransactionImpl_vTable.startSavepoint := @IReplicatedTransactionImpl_startSavepointDispatcher;
+	IReplicatedTransactionImpl_vTable.releaseSavepoint := @IReplicatedTransactionImpl_releaseSavepointDispatcher;
+	IReplicatedTransactionImpl_vTable.rollbackSavepoint := @IReplicatedTransactionImpl_rollbackSavepointDispatcher;
+	IReplicatedTransactionImpl_vTable.insertRecord := @IReplicatedTransactionImpl_insertRecordDispatcher;
+	IReplicatedTransactionImpl_vTable.updateRecord := @IReplicatedTransactionImpl_updateRecordDispatcher;
+	IReplicatedTransactionImpl_vTable.deleteRecord := @IReplicatedTransactionImpl_deleteRecordDispatcher;
+	IReplicatedTransactionImpl_vTable.executeSql := @IReplicatedTransactionImpl_executeSqlDispatcher;
+	IReplicatedTransactionImpl_vTable.executeSqlIntl := @IReplicatedTransactionImpl_executeSqlIntlDispatcher;
+
+	IReplicatedSessionImpl_vTable := ReplicatedSessionVTable.create;
+	IReplicatedSessionImpl_vTable.version := 4;
+	IReplicatedSessionImpl_vTable.addRef := @IReplicatedSessionImpl_addRefDispatcher;
+	IReplicatedSessionImpl_vTable.release := @IReplicatedSessionImpl_releaseDispatcher;
+	IReplicatedSessionImpl_vTable.setOwner := @IReplicatedSessionImpl_setOwnerDispatcher;
+	IReplicatedSessionImpl_vTable.getOwner := @IReplicatedSessionImpl_getOwnerDispatcher;
+	IReplicatedSessionImpl_vTable.init := @IReplicatedSessionImpl_initDispatcher;
+	IReplicatedSessionImpl_vTable.startTransaction := @IReplicatedSessionImpl_startTransactionDispatcher;
+	IReplicatedSessionImpl_vTable.cleanupTransaction := @IReplicatedSessionImpl_cleanupTransactionDispatcher;
+	IReplicatedSessionImpl_vTable.setSequence := @IReplicatedSessionImpl_setSequenceDispatcher;
 
 finalization
 	IVersionedImpl_vTable.destroy;
@@ -13124,6 +16406,9 @@ finalization
 	IMetadataBuilderImpl_vTable.destroy;
 	IResultSetImpl_vTable.destroy;
 	IStatementImpl_vTable.destroy;
+	IBatchImpl_vTable.destroy;
+	IBatchCompletionStateImpl_vTable.destroy;
+	IReplicatorImpl_vTable.destroy;
 	IRequestImpl_vTable.destroy;
 	IEventsImpl_vTable.destroy;
 	IAttachmentImpl_vTable.destroy;
@@ -13144,6 +16429,7 @@ finalization
 	IListUsersImpl_vTable.destroy;
 	ILogonInfoImpl_vTable.destroy;
 	IManagementImpl_vTable.destroy;
+	IAuthBlockImpl_vTable.destroy;
 	IWireCryptPluginImpl_vTable.destroy;
 	ICryptKeyCallbackImpl_vTable.destroy;
 	IKeyHolderPluginImpl_vTable.destroy;
@@ -13185,5 +16471,12 @@ finalization
 	IUdrProcedureFactoryImpl_vTable.destroy;
 	IUdrTriggerFactoryImpl_vTable.destroy;
 	IUdrPluginImpl_vTable.destroy;
+	IDecFloat16Impl_vTable.destroy;
+	IDecFloat34Impl_vTable.destroy;
+	IInt128Impl_vTable.destroy;
+	IReplicatedFieldImpl_vTable.destroy;
+	IReplicatedRecordImpl_vTable.destroy;
+	IReplicatedTransactionImpl_vTable.destroy;
+	IReplicatedSessionImpl_vTable.destroy;
 
 end.

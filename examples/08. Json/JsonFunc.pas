@@ -247,6 +247,10 @@ end;
 procedure TJsonFunction.getCharSet(AStatus: IStatus; AContext: IExternalContext;
   AName: PAnsiChar; ANameSize: Cardinal);
 begin
+  // затираем предыдущую кодировку
+  FillChar(AName, ANameSize, #0);
+  // ставим желаемую кодировку
+  StrCopy(AName, 'UTF8');
 end;
 
 function TJsonFunction.MakeScaleInteger(AValue: Int64; Scale: Smallint): string;
@@ -284,10 +288,19 @@ var
   Scale: Smallint;
   SingleValue: Single;
   DoubleValue: Double;
+  Dec16Value: FB_DEC16Ptr;
+  xDec16Buf: array[0..IDecFloat16.STRING_SIZE-1] of AnsiChar;
+  xDecFloat16: IDecFloat16;
+  Dec34Value: FB_DEC34Ptr;
+  xDec34Buf: array[0..IDecFloat34.STRING_SIZE-1] of AnsiChar;
+  xDecFloat34: IDecFloat34;
   BooleanValue: Boolean;
   DateValue: ISC_DATE;
   TimeValue: ISC_TIME;
+  TimeValueTz: ISC_TIME_TZPtr;
   TimestampValue: ISC_TIMESTAMP;
+  TimestampValueTz: ISC_TIMESTAMP_TZPtr;
+  tzBuffer: array[0..63] of AnsiChar;
   DateTimeValue: TDateTime;
   year, month, day: Cardinal;
   hours, minutes, seconds, fractions: Cardinal;
@@ -302,6 +315,9 @@ var
   base64Stream: TBase64EncodingStream;
   xFloatJson: TJSONFloatNumber;
 {$ENDIF}
+  xInt128: IInt128;
+  Int128Value: FB_I128Ptr;
+  xInt128Buf: array[0..IInt128.STRING_SIZE-1] of AnsiChar;
 begin
   // Получаем IUtil
   util := AContext.getMaster().getUtilInterface();
@@ -415,6 +431,34 @@ begin
           jsonObject.Add(FieldName, TJSONFloatNumber.Create(DoubleValue));
 {$ENDIF}
         end;
+      // DECFLOAT(16)
+      SQL_DEC16:
+        begin
+          Dec16Value := FB_Dec16Ptr(pData);
+          xDecFloat16 := util.getDecFloat16(AStatus);
+          xDecFloat16.toString(AStatus, Dec16Value, IDecFloat16.STRING_SIZE, @xDec16Buf[0]);
+          StringValue := AnsiString(@xDec16Buf[0]);
+          StringValue := Trim(StringValue);
+{$IFNDEF FPC}
+          jsonObject.AddPair(FieldName, StringValue);
+{$ELSE}
+          jsonObject.Add(FieldName, StringValue);
+{$ENDIF}
+        end;
+      // DECFLOAT(34)
+      SQL_DEC34:
+        begin
+          Dec34Value := FB_Dec34Ptr(pData);
+          xDecFloat34 := util.getDecFloat34(AStatus);
+          xDecFloat34.toString(AStatus, Dec34Value, IDecFloat34.STRING_SIZE, @xDec34Buf[0]);
+          StringValue := AnsiString(@xDec34Buf[0]);
+          StringValue := Trim(StringValue);
+{$IFNDEF FPC}
+          jsonObject.AddPair(FieldName, StringValue);
+{$ELSE}
+          jsonObject.Add(FieldName, StringValue);
+{$ENDIF}
+        end;
       // INTEGER
       // NUMERIC(p, s), где p = 1..4
       SQL_SHORT:
@@ -495,13 +539,27 @@ begin
 {$ENDIF}
           end;
         end;
+      SQL_INT128:
+        begin
+          Scale := AMeta.getScale(AStatus, i);
+          Int128Value := FB_I128Ptr(pData);
+          xInt128 := util.getInt128(AStatus);
+          xInt128.toString(AStatus, Int128Value, Scale, IInt128.STRING_SIZE, @xInt128Buf[0]);
+          StringValue := AnsiString(@xInt128Buf[0]);
+          StringValue := Trim(StringValue);
+{$IFNDEF FPC}
+          jsonObject.AddPair(FieldName, StringValue);
+{$ELSE}
+          jsonObject.Add(FieldName, StringValue);
+{$ENDIF}
+        end;
       // TIMESTAMP
       SQL_TIMESTAMP:
         begin
           TimestampValue := PISC_TIMESTAMP(pData)^;
           // получаем составные части даты-времени
-          util.decodeDate(TimestampValue.date, @year, @month, @day);
-          util.decodeTime(TimestampValue.time, @hours, @minutes, @seconds,
+          util.decodeDate(TimestampValue.timestamp_date, @year, @month, @day);
+          util.decodeTime(TimestampValue.timestamp_time, @hours, @minutes, @seconds,
             @fractions);
           // получаем дату-время в родном типе Delphi
           DateTimeValue := EncodeDate(year, month, day) +
@@ -509,6 +567,26 @@ begin
           // форматируем дату-время по заданному формату
           StringValue := FormatDateTime('yyyy/mm/dd hh:nn:ss', DateTimeValue,
             AFormatSettings);
+{$IFNDEF FPC}
+          jsonObject.AddPair(FieldName, StringValue);
+{$ELSE}
+          jsonObject.Add(FieldName, StringValue);
+{$ENDIF}
+        end;
+      // TIMESTAMP WITH TIME_ZONE
+      SQL_TIMESTAMP_TZ:
+        begin
+          TimestampValueTz := ISC_TIMESTAMP_TZPtr(pData);
+          // получаем составные части даты-времени и часовой пояс
+          util.decodeTimeStampTz(AStatus, TimestampValueTz, @year, @month, @day, @hours, @minutes, @seconds,
+            @fractions, 64, @tzBuffer[0]);
+
+          // получаем дату-время в родном типе Delphi
+          DateTimeValue := EncodeDate(year, month, day) +
+            EncodeTime(hours, minutes, seconds, fractions div 10);
+          // форматируем дату-время по заданному формату + часовой пояс
+          StringValue := FormatDateTime('yyyy/mm/dd hh:nn:ss', DateTimeValue,
+            AFormatSettings) + ' ' + AnsiString(@tzBuffer[0]);
 {$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
 {$ELSE}
@@ -544,6 +622,25 @@ begin
           // форматируем время по заданному формату
           StringValue := FormatDateTime('hh:nn:ss', DateTimeValue,
             AFormatSettings);
+{$IFNDEF FPC}
+          jsonObject.AddPair(FieldName, StringValue);
+{$ELSE}
+          jsonObject.Add(FieldName, StringValue);
+{$ENDIF}
+        end;
+      // TIME WITH TIME ZONE
+      SQL_TIME_TZ:
+        begin
+          TimeValueTz := ISC_TIME_TZPtr(pData);
+          // получаем составные части времени и часовой пояс
+          util.decodeTimeTz(AStatus, TimeValueTz, @hours, @minutes, @seconds,
+            @fractions, 64, @tzBuffer[0]);
+          // получаем время в родном типе Delphi
+          DateTimeValue := EncodeTime(hours, minutes, seconds,
+            fractions div 10);
+          // форматируем время по заданному формату + часовой пояс
+          StringValue := FormatDateTime('hh:nn:ss', DateTimeValue,
+            AFormatSettings) + ' ' + AnsiString(@tzBuffer[0]);
 {$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
 {$ELSE}
@@ -634,11 +731,9 @@ begin
 {$IFNDEF FPC}
           jsonObject.AddPair(FieldName, StringValue);
 {$ELSE}
-        end;
-        jsonObject.Add(FieldName, StringValue);
+          jsonObject.Add(FieldName, StringValue);
 {$ENDIF}
-      end;
-
+        end;
     end;
   end;
   // добавление записи в формате Json в массив

@@ -13,6 +13,7 @@ Pascal (FPC 3.0 и старше).
 
 Готовый PDF документ вы можете скачать по ссылке
 [UDR.pdf](https://github.com/sim1984/udr-book/releases/download/1/udr.pdf)
+[UDR.html](https://github.com/sim1984/udr-book/releases/download/1/udr.html)
 
 Примеры UDR на языке pascal находятся в
 [examples](https://github.com/sim1984/udr-book/tree/master/examples)

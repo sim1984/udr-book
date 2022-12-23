@@ -2351,7 +2351,7 @@ PInput = ^TInput;
 ==== Методы интерфейса IMessageMetadata
 
 
-1.  getCount
+. getCount
 +
 [source,cpp]
 ----
@@ -2360,7 +2360,8 @@ unsigned getCount(StatusType* status)
 +
 возвращает количество полей/параметров в сообщении. Во всех вызовах,
 содержащих индексный параметр, это значение должно быть: `0 {lt}= index < getCount()`.
-2.  getField
+
+. getField
 +
 [source,cpp]
 ----
@@ -2368,7 +2369,8 @@ const char* getField(StatusType* status, unsigned index)
 ----
 +
 возвращает имя поля.
-3.  getRelation
+
+. getRelation
 +
 [source,cpp]
 ----
@@ -2376,7 +2378,8 @@ const char* getRelation(StatusType* status, unsigned index)
 ----
 +
 возвращает имя отношения (из которого выбрано данное поле).
-4.  getOwner
+
+. getOwner
 +
 [source,cpp]
 ----
@@ -2384,7 +2387,8 @@ const char* getOwner(StatusType* status, unsigned index)
 ----
 +
 возвращает имя владельца отношения.
-5.  getAlias
+
+. getAlias
 +
 [source,cpp]
 ----
@@ -2392,7 +2396,8 @@ const char* getAlias(StatusType* status, unsigned index)
 ----
 +
 возвращает псевдоним поля.
-6.  getType
+
+. getType
 +
 [source,cpp]
 ----
@@ -2400,7 +2405,8 @@ unsigned getType(StatusType* status, unsigned index)
 ----
 +
 возвращает SQL тип поля.
-7.  isNullable
+
+. isNullable
 +
 [source,cpp]
 ----
@@ -2408,7 +2414,8 @@ FB_BOOLEAN isNullable(StatusType* status, unsigned index)
 ----
 +
 возвращает true, если поле может принимать значение NULL.
-8.  getSubType
+
+. getSubType
 +
 [source,cpp]
 ----
@@ -2416,7 +2423,8 @@ int getSubType(StatusType* status, unsigned index)
 ----
 +
 возвращает подтип поля BLOB (0 - двоичный, 1 - текст и т. д.).
-9.  getLength
+
+. getLength
 +
 [source,cpp]
 ----
@@ -2424,7 +2432,8 @@ unsigned getLength(StatusType* status, unsigned index)
 ----
 +
 возвращает максимальную длину поля в байтах.
-10. getScale
+
+. getScale
 +
 [source,cpp]
 ----
@@ -2432,7 +2441,8 @@ int getScale(StatusType* status, unsigned index)
 ----
 +
 возвращает масштаб для числового поля.
-11. getCharSet
+
+. getCharSet
 +
 [source,cpp]
 ----
@@ -2440,7 +2450,8 @@ unsigned getCharSet(StatusType* status, unsigned index)
 ----
 +
 возвращает набор символов для символьных полей и текстового BLOB.
-12. getOffset
+
+. getOffset
 +
 [source,cpp]
 ----
@@ -2449,7 +2460,8 @@ unsigned getOffset(StatusType* status, unsigned index)
 +
 возвращает смещение данных поля в буфере сообщений (используйте его для
 доступа к данным в буфере сообщений).
-13. getNullOffset
+
+. getNullOffset
 +
 [source,cpp]
 ----
@@ -2457,7 +2469,8 @@ unsigned getNullOffset(StatusType* status, unsigned index)
 ----
 +
 возвращает смещение NULL индикатора для поля в буфере сообщений.
-14. getBuilder
+
+. getBuilder
 +
 [source,cpp]
 ----
@@ -2466,7 +2479,8 @@ IMetadataBuilder* getBuilder(StatusType* status)
 +
 возвращает интерфейс `IMetadataBuilder`, инициализированный метаданными
 этого сообщения.
-15. getMessageLength
+
+. getMessageLength
 +
 [source,cpp]
 ----

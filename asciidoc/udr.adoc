@@ -10,8 +10,8 @@
 :toc: left
 :toclevels: 4
 :toc-title: Содержание
-:source-highlighter: highlight.js
-//:source-highlighter: coderay
+//:source-highlighter: highlight.js
+:source-highlighter: coderay
 
 toc::[]
 
@@ -2359,7 +2359,7 @@ unsigned getCount(StatusType* status)
 ----
 +
 возвращает количество полей/параметров в сообщении. Во всех вызовах,
-содержащих индексный параметр, это значение должно быть: `0 {lt}= index < getCount()`.
+содержащих индексный параметр, это значение должно быть: `0 &lt;= index < getCount()`.
 
 . getField
 +

@@ -11,6 +11,11 @@ Desktop.ini
 # Ignore IntelliJ project info
 .idea/
 
+*.stat
+*.identcache
+*.local
+*~
+
 # PDF and HTML
 /asciidoc/*.pdf
 /asciidoc/*.html

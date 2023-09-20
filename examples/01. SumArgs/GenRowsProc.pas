@@ -1,4 +1,4 @@
-{
+﻿{
  *	PROGRAM:	UDR samples.
  *	MODULE:		GenRowsProc.pas
  *	DESCRIPTION:	A sample external procedure.
@@ -189,8 +189,8 @@ begin
   if PInput(AInMsg).startNull or PInput(AInMsg).finishNull then
   begin
     POutput(AOutMsg).nNull := True;
-	// намеренно ставим выходной результат таким, чтобы 
-	// метод TGenRowsResultSet.fetch вернул false
+	  // намеренно ставим выходной результат таким, чтобы
+	  // метод TGenRowsResultSet.fetch вернул false
     Output.n := Input.finish;
     exit;
   end;

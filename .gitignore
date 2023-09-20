@@ -8,9 +8,6 @@ Desktop.ini
 # Thumbnails
 ._*
 
-# Ignore IntelliJ project info
-.idea/
-
 *.stat
 *.identcache
 *.local
@@ -20,6 +17,4 @@ Desktop.ini
 /asciidoc/*.pdf
 /asciidoc/*.html
 
-# output documents
-/docbook/out/*
 

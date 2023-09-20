@@ -62,81 +62,79 @@ type
   end;
   POutput = ^TOutput;
 
-  // Фабрика для создания экземпляра внешней процедуры TGenRowsProcedure
+  // Factory for creating an instance of an external procedure TGenRowsProcedure
   TGenRowsFactory = class(IUdrProcedureFactoryImpl)
-    // Вызывается при уничтожении фабрики
+    // Called when the factory is destroyed
     procedure dispose(); override;
 
-    { Выполняется каждый раз при загрузке внешней функции в кеш метаданных
+    { Executed every time an external function is loaded into the metadata cache
 
-      @param(AStatus Статус вектор)
-      @param(AContext Контекст выполнения внешней функции)
-      @param(AMetadata Метаданные внешней функции)
-      @param(AInBuilder Построитель сообщения для входных метаданных)
-      @param(AOutBuilder Построитель сообщения для выходных метаданных)
+      @param(AStatus Status vector)
+      @param(AContext External procedure context)
+      @param(AMetadata External procedure metadata)
+      @param(AInBuilder Message Builder for Input Metadata)
+      @param(AOutBuilder Message Builder for Output Metadata)
     }
     procedure setup(AStatus: IStatus; AContext: IExternalContext;
       AMetadata: IRoutineMetadata; AInBuilder: IMetadataBuilder;
       AOutBuilder: IMetadataBuilder); override;
 
-    { Создание нового экземпляра внешней процедуры TGenRowsProcedure
+    { Creating a new instance of the external procedure TGenRowsProcedure
 
-      @param(AStatus Статус вектор)
-      @param(AContext Контекст выполнения внешней функции)
-      @param(AMetadata Метаданные внешней функции)
-      @returns(Экземпляр внешней функции)
+      @param(AStatus Status vector)
+      @param(AContext External procedure context)
+      @param(AMetadata External procedure metadata)
+      @returns(External Procedure Instance)
     }
     function newItem(AStatus: IStatus; AContext: IExternalContext;
       AMetadata: IRoutineMetadata): IExternalProcedure; override;
   end;
 
-  // Внешняя процедура TGenRowsProcedure.
+  // External procedure TGenRowsProcedure.
   TGenRowsProcedure = class(IExternalProcedureImpl)
   public
-    // Вызывается при уничтожении экземпляра процедуры
+    // Called when a procedure instance is destroyed
     procedure dispose(); override;
 
-    { Этот метод вызывается непосредственно перед open и сообщает
-      ядру наш запрошенный набор символов для обмена данными внутри
-      этого метода. Во время этого вызова контекст использует набор символов,
-      полученный из ExternalEngine::getCharSet.
+    { This method is called just before open and tells the engine the requested 
+	  character set to exchange data within this method. During this call, 
+	  the context uses the character set obtained from ExternalEngine::getCharSet.
 
-      @param(AStatus Статус вектор)
-      @param(AContext Контекст выполнения внешней функции)
-      @param(AName Имя набора символов)
-      @param(AName Длина имени набора символов)
+      @param(AStatus Status vector)
+      @param(AContext External procedure context)
+      @param(AName Character set name)
+      @param(AName Character set name length)
     }
     procedure getCharSet(AStatus: IStatus; AContext: IExternalContext;
       AName: PAnsiChar; ANameSize: Cardinal); override;
 
-    { Выполнение внешней процедуры
+    { Executing an external procedure
 
-      @param(AStatus Статус вектор)
-      @param(AContext Контекст выполнения внешней функции)
-      @param(AInMsg Указатель на входное сообщение)
-      @param(AOutMsg Указатель на выходное сообщение)
-      @returns(Набор данных для селективной процедуры или
-               nil для процедур выполнения)
+      @param(AStatus Status vector)
+      @param(AContext External procedure context)
+      @param(AInMsg Pointer to input message)
+      @param(AOutMsg Pointer to output message)
+      @returns(External Dataset)
     }
     function open(AStatus: IStatus; AContext: IExternalContext; AInMsg: Pointer;
       AOutMsg: Pointer): IExternalResultSet; override;
   end;
 
-  // Выходной набор данных для процедуры TGenRowsProcedure
+  // Output dataset for the TGenRowsProcedure procedure
   TGenRowsResultSet = class(IExternalResultSetImpl)
     Input: PInput;
     Output: POutput;
 
-    // Вызывается при уничтожении экземпляра набора данных
+    // Called when a dataset instance is destroyed
     procedure dispose(); override;
 
-    { Извлечение очередной записи из набора данных.
-      В некотором роде аналог SUSPEND. В этом методе должна
-      подготовливаться очередная запись из набора данных.
+    { Retrieving the next record from a data set.
+      In some ways analogous to SUSPEND. 
+	  In this method, the next record from the data set must be prepared.
 
-      @param(AStatus Статус вектор)
-      @returns(True если в наборе данных есть запись для извлечения,
-               False если записи закончились)
+      @param(AStatus Status vector)
+      @returns(True if there is a record to be retrieved in the dataset, 
+	           False if there are no more records.)
     }
     function fetch(AStatus: IStatus): Boolean; override;
   end;
@@ -185,22 +183,22 @@ begin
     Output := AOutMsg;
   end;	
 
-  // если один из входных аргументов NULL ничего не возвращаем
+  // if one of the input arguments is NULL, we return nothing
   if PInput(AInMsg).startNull or PInput(AInMsg).finishNull then
   begin
     POutput(AOutMsg).nNull := True;
-	  // намеренно ставим выходной результат таким, чтобы
-	  // метод TGenRowsResultSet.fetch вернул false
+	  // intentionally set the output result so that
+	  // method TGenRowsResultSet.fetch returned false
     Output.n := Input.finish;
     exit;
   end;
-  // проверки
+
   if PInput(AInMsg).start > PInput(AInMsg).finish then
     raise Exception.Create('First parameter greater then second parameter.');
 
   with TGenRowsResultSet(Result) do
   begin
-    // начальное значение
+    // initial value
     Output.nNull := False;
     Output.n := Input.start - 1;
   end;
@@ -213,10 +211,9 @@ begin
   Destroy;
 end;
 
-// Если возвращает True то извлекается очередная запись из набора данных.
-// Если возвращает False то записи в наборе данных закончились
-// новые значения в выходном векторе вычисляются каждый раз
-// при вызове этого метода
+// If it returns True, then the next record is retrieved from the dataset.
+// If it returns False, then there are no more records in the data set. 
+// New values are calculated each time this method is called.
 function TGenRowsResultSet.fetch(AStatus: IStatus): Boolean;
 begin
   Inc(Output.n);

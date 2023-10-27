@@ -8,13 +8,13 @@ Desktop.ini
 # Thumbnails
 ._*
 
-# Ignore IntelliJ project info
-.idea/
+*.stat
+*.identcache
+*.local
+*~
 
 # PDF and HTML
 /asciidoc/*.pdf
 /asciidoc/*.html
 
-# output documents
-/docbook/out/*
 
